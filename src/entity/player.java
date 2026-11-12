@@ -41,7 +41,7 @@ public class player extends entity {
 
     public void getPlayerImage() {
         try {
-            SpriteSheet sheet = new SpriteSheet("/player/Warrior-Red.png", 32, 32);
+            SpriteSheet sheet = new SpriteSheet("/PostApocalypse AssetPack/player/Warrior-Red.png", 32, 32);
 
             // rows: down = 0, right = 2, up = 4, left = 6
             idleDown  = makeAnim(sheet, 0, 0, 2, 500);

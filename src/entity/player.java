@@ -14,11 +14,12 @@ public class player extends entity {
 
     Animation walkUp, walkDown, walkLeft, walkRight;
     Animation idleUp, idleDown, idleLeft, idleRight;
+    Animation attackUp, attackDown, attackLeft, attackRight;
     Animation currentAnim;
     boolean moving = false;
+    boolean attacking = false;
+    boolean attackLatch = false;   // one attack per J press
 
-    // Where the player is drawn on the SCREEN. Always the center, because the camera follows the player.
-    // (x and y from the entity class are now the player's position in the WORLD.)
     public final int screenX;
     public final int screenY;
 
@@ -26,7 +27,6 @@ public class player extends entity {
         this.gp = gp;
         this.KeyH = keyH;
 
-        // Center of the screen, minus half of the drawn character size (96 px / 2 = one tileSize)
         screenX = gp.screenWidth / 2 - gp.tileSize;
         screenY = gp.screenHeight / 2 - gp.tileSize;
 
@@ -35,20 +35,28 @@ public class player extends entity {
     }
 
     public void setDefaultValues() {
-        // Starting spot in the WORLD, in pixels (tile column 10, row 10).
-        // Your map must be at least this big.
         x = gp.tileSize * 10;
         y = gp.tileSize * 10;
         speed = 4;
-        direction = "down";   // 'direction' comes from the entity class
+        direction = "down";
     }
 
+    // Looping animation (idle / walk)
     private Animation makeAnim(SpriteSheet sheet, int row, int startCol, int count, long frameTimeMs) {
         BufferedImage[] frames = new BufferedImage[count];
         for (int i = 0; i < count; i++) {
             frames[i] = sheet.get(row, startCol + i);
         }
         return new Animation(frames, frameTimeMs);
+    }
+
+    // Plays once (attack)
+    private Animation makeAttackAnim(SpriteSheet sheet, int row, int startCol, int count, long frameTimeMs) {
+        BufferedImage[] frames = new BufferedImage[count];
+        for (int i = 0; i < count; i++) {
+            frames[i] = sheet.get(row, startCol + i);
+        }
+        return new Animation(frames, frameTimeMs, false);
     }
 
     public void getPlayerImage() {
@@ -68,6 +76,12 @@ public class player extends entity {
             idleLeft  = makeAnim(sheet, 6, 0, 2, 500);
             walkLeft  = makeAnim(sheet, 6, 2, 2, 150);
 
+            // Attack frames: (sheet, row, startColumn, frameCount, msPerFrame). Columns are a guess.
+            attackDown  = makeAttackAnim(sheet, 0, 4, 3, 120);
+            attackRight = makeAttackAnim(sheet, 2, 4, 3, 120);
+            attackUp    = makeAttackAnim(sheet, 4, 4, 3, 120);
+            attackLeft  = makeAttackAnim(sheet, 6, 4, 3, 120);
+
             currentAnim = idleDown;
         } catch (IOException e) {
             e.printStackTrace();
@@ -75,6 +89,30 @@ public class player extends entity {
     }
 
     public void update() {
+
+        // ----- ATTACK -----
+        if (KeyH.attackPressed && !attacking && !attackLatch) {
+            attacking = true;
+            attackLatch = true;
+            switch (direction) {
+                case "up":    currentAnim = attackUp;    break;
+                case "down":  currentAnim = attackDown;  break;
+                case "left":  currentAnim = attackLeft;  break;
+                case "right": currentAnim = attackRight; break;
+            }
+            currentAnim.reset();
+        }
+        if (!KeyH.attackPressed) attackLatch = false;
+
+        if (attacking) {
+            currentAnim.tick();
+            if (currentAnim.isFinished()) {
+                attacking = false;
+            }
+            return;   // no walking while attacking
+        }
+
+        // ----- MOVEMENT -----
         moving = false;
 
         if (KeyH.upPressed) {
@@ -107,13 +145,14 @@ public class player extends entity {
             currentAnim = next;
             currentAnim.reset();
         }
+
+        currentAnim.tick();   // advance idle / walk frames
     }
 
     public void draw(Graphics2D g2) {
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
-        // Drawn at the fixed screen position (the center), NOT at x, y.
         g2.drawImage(currentAnim.current(), screenX, screenY, gp.tileSize * 2, gp.tileSize * 2, null);
     }
 }

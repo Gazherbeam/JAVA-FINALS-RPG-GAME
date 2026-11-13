@@ -15,20 +15,32 @@ public class player extends entity {
     Animation walkUp, walkDown, walkLeft, walkRight;
     Animation idleUp, idleDown, idleLeft, idleRight;
     Animation currentAnim;
-    String direction = "down";
     boolean moving = false;
+
+    // Where the player is drawn on the SCREEN. Always the center, because the camera follows the player.
+    // (x and y from the entity class are now the player's position in the WORLD.)
+    public final int screenX;
+    public final int screenY;
 
     public player(GamePanel gp, KeyHandler keyH) {
         this.gp = gp;
         this.KeyH = keyH;
+
+        // Center of the screen, minus half of the drawn character size (96 px / 2 = one tileSize)
+        screenX = gp.screenWidth / 2 - gp.tileSize;
+        screenY = gp.screenHeight / 2 - gp.tileSize;
+
         setDefaultValues();
         getPlayerImage();
     }
 
     public void setDefaultValues() {
-        x = 100;
-        y = 100;
+        // Starting spot in the WORLD, in pixels (tile column 10, row 10).
+        // Your map must be at least this big.
+        x = gp.tileSize * 10;
+        y = gp.tileSize * 10;
         speed = 4;
+        direction = "down";   // 'direction' comes from the entity class
     }
 
     private Animation makeAnim(SpriteSheet sheet, int row, int startCol, int count, long frameTimeMs) {
@@ -83,7 +95,6 @@ public class player extends entity {
             moving = true;
         }
 
-        // pick the animation for the current direction and moving/idle state
         Animation next = idleDown;
         switch (direction) {
             case "up":    next = moving ? walkUp    : idleUp;    break;
@@ -92,7 +103,6 @@ public class player extends entity {
             case "right": next = moving ? walkRight : idleRight; break;
         }
 
-        // restart the animation only when it changes
         if (next != currentAnim) {
             currentAnim = next;
             currentAnim.reset();
@@ -103,6 +113,7 @@ public class player extends entity {
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
-        g2.drawImage(currentAnim.current(), x, y, gp.tileSize * 2, gp.tileSize * 2, null);
+        // Drawn at the fixed screen position (the center), NOT at x, y.
+        g2.drawImage(currentAnim.current(), screenX, screenY, gp.tileSize * 2, gp.tileSize * 2, null);
     }
 }

@@ -31,7 +31,7 @@ public class TileManager {
         add("BG yellow",     folder + "Background_Bleak-Yellow_TileSet.png");
         add("brick wall",    folder + "Brick-Wall_TileSet.png");
         add("grass top",     folder + "Grass-On-Top_TileSet.png");
-
+        add("grass top", folder + "Grass_On-Top_TileSet.png");
         // ===== PALETTE =====
         // tile("nickname", tile number from the TileViewer)
         palette = new BufferedImage[] {

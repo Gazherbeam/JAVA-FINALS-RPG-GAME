@@ -14,23 +14,26 @@ public class GamePanel extends JPanel implements Runnable {
     public final int tileSize = originalTileSize * scale;
     public final int maxScreenCol = 16;
     public final int maxScreenRow = 16;
-
     public final int screenWidth = tileSize * maxScreenCol;
     public final int screenHeight = tileSize * maxScreenRow;
 
-    public  final int maxWorldCol = 50;
-    public  final  int maxWorldRow = 50;
-    //FPS
-    int FPS = 60;
+    // ----- Game states -----
+    public final int titleState = 0;
+    public final int playState = 1;
+    public final int settingsState = 2;
+    public final int creditsState = 3;
+    public int gameState = titleState;       // the game starts on the main menu
 
-    TileManager tileM = new TileManager(this);
-    KeyHandler keyH = new KeyHandler();
+    int FPS = 60;
+    int currentFPS = 0;                      // measured FPS, shown if enabled in Settings
+
+    public KeyHandler keyH = new KeyHandler(this);
+    public UI ui = new UI(this);
     Thread gameThread;
+    public TileManager tileM = new TileManager(this);
     public player Player = new player(this, keyH);
 
-
     public GamePanel() {
-
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setBackground(Color.black);
         this.setDoubleBuffered(true);
@@ -47,28 +50,26 @@ public class GamePanel extends JPanel implements Runnable {
     public void run() {
         double drawInterval = 1000000000 / FPS;
         double delta = 0;
-        long LastTime = System.nanoTime();
+        long lastTime = System.nanoTime();
         long currentTime;
         long drawCount = 0;
         long timer = 0;
+
         while (gameThread != null) {
             currentTime = System.nanoTime();
-
-            delta += (currentTime - LastTime) / drawInterval;
-
-            LastTime = currentTime;
+            delta += (currentTime - lastTime) / drawInterval;
+            timer += (currentTime - lastTime);       // fixed: the timer now counts up
+            lastTime = currentTime;
 
             if (delta >= 1) {
-                //UPDATE 1 : update info such as character positions
                 update();
-                //DRAW 2: draw the screen with the update info
                 repaint();
                 delta--;
                 drawCount++;
             }
 
             if (timer >= 1000000000) {
-                System.out.println("FPS: " + drawCount);
+                currentFPS = (int) drawCount;
                 drawCount = 0;
                 timer = 0;
             }
@@ -76,23 +77,30 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void update() {
-
-        Player.update();
+        // The world only updates while playing. In menus, everything is paused.
+        if (gameState == playState) {
+            Player.update();
+        }
     }
 
     @Override
-
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-
         Graphics2D g2 = (Graphics2D) g;
 
-        tileM.draw(g2);
+        if (gameState == playState) {
+            tileM.draw(g2);
+            Player.draw(g2);
 
-        Player.draw(g2);
+            if (ui.showFPS) {
+                g2.setColor(Color.WHITE);
+                g2.setFont(new Font("Arial", Font.BOLD, 18));
+                g2.drawString("FPS: " + currentFPS, 10, 24);
+            }
+        } else {
+            ui.draw(g2);   // title, settings or credits
+        }
 
         g2.dispose();
     }
-
-
 }

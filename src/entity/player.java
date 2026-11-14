@@ -77,10 +77,10 @@ public class player extends entity {
             walkLeft  = makeAnim(sheet, 6, 2, 2, 150);
 
             // Attack frames: (sheet, row, startColumn, frameCount, msPerFrame). Columns are a guess.
-            attackDown  = makeAttackAnim(sheet, 0, 4, 3, 120);
-            attackRight = makeAttackAnim(sheet, 2, 4, 3, 120);
-            attackUp    = makeAttackAnim(sheet, 4, 4, 3, 120);
-            attackLeft  = makeAttackAnim(sheet, 6, 4, 3, 120);
+            attackDown  = makeAttackAnim(sheet, 0, 4, 4, 100);
+            attackRight = makeAttackAnim(sheet, 2, 4, 4, 100);
+            attackUp    = makeAttackAnim(sheet, 4, 4, 4, 100);
+            attackLeft  = makeAttackAnim(sheet, 6, 4, 4, 100);
 
             currentAnim = idleDown;
         } catch (IOException e) {

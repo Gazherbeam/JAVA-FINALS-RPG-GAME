@@ -24,26 +24,101 @@ public class TileManager {
     public TileManager(GamePanel gp) {
         this.gp = gp;
 
-        // ===== TILESET NICKNAMES =====  add("nickname", "path to the PNG")
+    // ===== TILESET NICKNAMES =====
         String folder = "/PostApocalypse AssetPack/Tiles/";
-        add("BG green",      folder + "Background_Green_TileSet.png");
-        add("BG dark green", folder + "Background_Dark-Green_TileSet.png");
-        add("BG yellow",     folder + "Background_Bleak-Yellow_TileSet.png");
-        add("brick wall",    folder + "Brick-Wall_TileSet.png");
-        add("grass top",     folder + "Grass_On-Top_TileSet.png");
+        add("BG green",       folder + "Background_Green_TileSet.png");
+        add("BG yellow",       folder + "Background_Bleak-Yellow_TileSet.png");
+        add("brick wall",      folder + "Brick-Wall_TileSet.png");
+        add("garbage",         folder + "Garbage_TileSet.png");
+        add("wire fence",      folder + "Wire-Fence/Wire-Fence_TileSet.png");
 
-        // ===== PALETTE =====
-        // Position in this list = number you write in map01.txt.
-        //   tile("nickname", number)   walkable tile
-        //   solid("nickname", number)  solid tile: the player and enemies can't walk through it
-        // Copy your own palette lines here if you changed them.
+
+    // ===== PALETTE =====
         palette = new Tile[] {
-                tile("BG green", 25),      // 0  walkable
-                solid("brick wall", 5),    // 1  SOLID (the wall border)
-                tile("BG green", 52)       // 2  walkable
+                tile("BG green", 25),       // 0: walkable
+                solid("brick wall", 5),     // 1: solid wall border
+                tile("BG green", 52),       // 2: walkable
+
+                tile("BG yellow", 52),       // 3: plain dirt ground
+                tile("BG yellow", 3),        // 4: cracked dirt
+                tile("BG yellow", 27),       // 5: dirt with yellow bits
+                solid("brick wall", 1),      // 6: broken wall top
+                solid("brick wall", 2),      // 7: broken wall top
+                solid("brick wall", 3),      // 8: broken wall top
+                solid("brick wall", 4),      // 9: mossy wall top
+                solid("brick wall", 9),      // 10: wall body (second row)
+                solid("brick wall", 6),      // 11: left side wall
+                solid("brick wall", 11),     // 12: right side wall
+                solid("brick wall", 16),     // 13: bottom wall
+                solid("wire fence", 6),      // 14: fence (plain)
+                solid("wire fence", 14),     // 15: fence with post
+                solid("wire fence", 13),     // 16: fence with trash stuck in it
+                solid("wire fence", 0),      // 17: fence with a bag stuck in it
+
+                // ----- BIG PILE pieces -----
+                tile("garbage", 0),          // 18: top-left corner
+                tile("garbage", 1),          // 19: top edge
+                tile("garbage", 2),          // 20: top edge
+                tile("garbage", 3),          // 21: top edge
+                tile("garbage", 4),          // 22: top-right corner
+                tile("garbage", 16),         // 23: left edge
+                tile("garbage", 8),          // 24: left edge with red barrel
+                tile("garbage", 20),         // 25: right edge
+                tile("garbage", 12),         // 26: right edge
+                tile("garbage", 24),         // 27: bottom-left corner
+                tile("garbage", 25),         // 28: bottom edge, dumpster (left half)
+                tile("garbage", 26),         // 29: bottom edge, dumpster (right half)
+                tile("garbage", 27),         // 30: bottom edge
+                tile("garbage", 28),         // 31: bottom-right corner
+                tile("garbage", 9),          // 32: inside filling
+                tile("garbage", 11),         // 33: inside filling
+                tile("garbage", 17),         // 34: inside filling (dark bags)
+                tile("garbage", 18),         // 35: inside filling (red)
+                tile("garbage", 10),         // 36: inside filling (brown box)
+                tile("garbage", 19),         // 37: inside filling (tire, not used yet)
+
+                // ----- SMALL PILE pieces -----
+                tile("garbage", 5),          // 38: top-left corner
+                tile("garbage", 6),          // 39: top edge
+                tile("garbage", 7),          // 40: top-right corner
+                tile("garbage", 13),         // 41: left edge
+                tile("garbage", 14),         // 42: middle
+                tile("garbage", 15),         // 43: right edge with red barrel
+                tile("garbage", 21),         // 44: bottom-left corner
+                tile("garbage", 22),         // 45: bottom edge
+                tile("garbage", 23)          // 46: bottom-right corner
         };
 
-        loadMap("/maps/village01.txt");
+        // ################################################################
+        // ##### ADDED (NEW CODE #1): FIX THE BLACK EDGES              #####
+        // ##### This block is INSIDE the constructor, after the       #####
+        // ##### palette and BEFORE loadMap(...).                      #####
+        // ################################################################
+        BufferedImage ground = palette[3].image;
+        for (int i = 14; i < palette.length; i++) {      // fence and garbage pieces
+            palette[i].image = onTop(palette[i].image, ground);
+        }
+        Color SKY = new Color(196, 178, 60);             // dusty yellow (use Color.BLACK for black)
+        BufferedImage skyTile = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D sg = skyTile.createGraphics();
+        sg.setColor(SKY);
+        sg.fillRect(0, 0, 16, 16);
+        sg.dispose();
+        for (int i = 6; i <= 9; i++) {                   // the broken wall tiles on the top row
+            palette[i].image = onTop(palette[i].image, skyTile);
+        }
+
+        loadMap("/maps/village01.txt"); // Loads the maps
+    }
+
+    private BufferedImage onTop(BufferedImage foreground, BufferedImage background) {
+        BufferedImage result = new BufferedImage(
+                background.getWidth(), background.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = result.createGraphics();
+        g2.drawImage(background, 0, 0, null);
+        g2.drawImage(foreground, 0, 0, null);
+        g2.dispose();
+        return result;
     }
 
     // ===== LOADING =====

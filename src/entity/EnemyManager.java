@@ -24,7 +24,7 @@ public class EnemyManager {
     public void spawnDefaults() {
         enemies.clear();
         projectiles.clear();
-        spawn("shooter", 14, 10);
+        spawn("dummy", 14, 10);
         System.out.println("Enemies spawned: " + enemies.size());
     }
 

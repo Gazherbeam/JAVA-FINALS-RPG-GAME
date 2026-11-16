@@ -43,7 +43,7 @@ public class TileManager {
                 tile("BG green", 52)       // 2  walkable
         };
 
-        loadMap("/maps/map01.txt");
+        loadMap("/maps/village01.txt");
     }
 
     // ===== LOADING =====

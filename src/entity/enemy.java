@@ -36,6 +36,7 @@ public class enemy extends entity {
     int cooldownTimer = 0, windupTimer = 0, wanderTimer = 0, deathTimer = 0;
     double wanderX = 0, wanderY = 0;
     double remX = 0, remY = 0;
+    double playerDashDX, playerDashDY;
     boolean moving = false;
 
     // ----- Animations: [0 idle, 1 walk, 2 attack][0 down, 1 right, 2 up, 3 left] -----
@@ -90,6 +91,13 @@ public class enemy extends entity {
                 detectRadius = 7 * ts; attackRange = 6 * ts; keepDistance = 4 * ts;
                 attackCooldown = 100; windup = 18;
                 tint = new Color(255, 170, 80);
+                break;
+            case "dummy":
+                maxHP = 999; moveSpeed = 0.0; damage = 0; xpReward = 0;
+                ranged = false;
+                knockbackResist = 1;
+                detectRadius = 0; attackRange = 0; keepDistance = 0;
+                tint = new Color(210, 180, 140);
                 break;
             default:   // "melee"
                 maxHP = 30; moveSpeed = 1.6; damage = 8; xpReward = 10;
@@ -163,6 +171,12 @@ public class enemy extends entity {
     private void fire(double angle, double bulletSpeed) {
         double tx = centerX() + Math.cos(angle) * 100, ty = centerY() + Math.sin(angle) * 100;
         gp.enemyM.projectiles.add(new projectile(gp, centerX(), centerY(), tx, ty, bulletSpeed, damage));
+    }
+
+    public void onPlayerDash(double dx, double dy) {
+        if (state == State.IDLE || state == State.DEAD) return;
+        playerDashDX = dx;
+        playerDashDY = dy;
     }
 
     // Fires `count` bullets spread evenly across `spread` radians, centered on `centerAngle`

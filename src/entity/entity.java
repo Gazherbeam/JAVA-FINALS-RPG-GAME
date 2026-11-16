@@ -15,10 +15,15 @@ public class entity {
     public BufferedImage up1, up2, down1, down2, left1, left2, right1, right2;
     public String direction;
 
-    // ----- Hitbox -----
+    // ----- Hitbox (collision with walls) -----
     // The drawn sprite is 96x96 but the body is much smaller, so collision uses a box
     // around the feet. These are offsets from (x, y).
     public int hitX = 33, hitY = 50, hitW = 30, hitH = 22;
+
+    // ----- Hurtbox (where bullets can hit) -----
+    // The visible body of the sprite. It is bigger than the feet box above, so a bullet
+    // touching any part of the character registers. Set to 0, 0, 96, 96 to use the whole image.
+    public int hurtX = 24, hurtY = 14, hurtW = 48, hurtH = 66;
 
     // ----- Combat stats -----
     public int maxHP = 100, hp = 100;
@@ -32,9 +37,13 @@ public class entity {
     public int kbTimer = 0;               // ticks of push left (also acts as hit-stun)
     private double kbRemX, kbRemY;
 
+    // Leftover fractions of a pixel for moveBy()
+    private double moveRemX, moveRemY;
+
     // ===== POSITION AND HITBOX =====
 
-    public Rectangle hitbox() { return new Rectangle(x + hitX, y + hitY, hitW, hitH); }
+    public Rectangle hitbox()  { return new Rectangle(x + hitX, y + hitY, hitW, hitH); }
+    public Rectangle hurtbox() { return new Rectangle(x + hurtX, y + hurtY, hurtW, hurtH); }
     public int centerX() { return x + hitX + hitW / 2; }
     public int centerY() { return y + hitY + hitH / 2; }
 
@@ -65,6 +74,19 @@ public class entity {
             y += sy;
         }
         return full;
+    }
+
+    // Movement with fractional speeds, in ANY direction (this is what makes diagonals work).
+    // Give it a velocity vector; a speed of 2.83 moves 2 px on some ticks and 3 px on others,
+    // so a diagonal walk is exactly as fast as a straight one.
+    // Returns true if it moved the full distance (false if a wall stopped it).
+    public boolean moveBy(GamePanel gp, double vx, double vy) {
+        moveRemX += vx;
+        moveRemY += vy;
+        int mx = (int) moveRemX, my = (int) moveRemY;
+        moveRemX -= mx;
+        moveRemY -= my;
+        return moveWithCollision(gp, mx, my);
     }
 
     // ===== DAMAGE AND KNOCKBACK =====

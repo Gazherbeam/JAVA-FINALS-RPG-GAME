@@ -26,6 +26,25 @@ public class player extends entity {
     public int attackDamage = 10;
     public double attackKnockback = 9;
 
+    // ----- Dash settings (press X) -----
+    public static final int DASH_TICKS = 10;                       // how long a dash lasts (10 ticks = 0.17 s)
+    public static final int DASH_SPEED = 14;                       // pixels per tick
+    public static final int DASH_DISTANCE = DASH_TICKS * DASH_SPEED;   // 140 px, a bit under 3 tiles
+    public static final int DASH_COOLDOWN = 40;                    // ticks after a dash before the next one
+    static final int GHOST_EVERY = 2;                              // drop an after-image every 2 ticks
+
+    boolean dashing = false;       // true = invincible, moving fast
+    int dashTimer = 0;             // ticks of dash left
+    int dashCooldownTimer = 0;
+    boolean dashLatch = false;     // one dash per key press
+    double dashDX, dashDY;         // dash direction (unit vector)
+
+    // The white after-images: they last 14 ticks and start at 50% opacity
+    public final AfterImages ghosts = new AfterImages(14, 0.5f);
+
+    // Turn this on to see the hurtbox (where bullets can hit) as a red outline
+    static final boolean DEBUG_HURTBOX = false;
+
     // ----- Camera -----
     // camX, camY = the world position at the top-left of the screen. Clamped to the map.
     public int camX, camY;
@@ -89,16 +108,52 @@ public class player extends entity {
         }
     }
 
+    // The walk / idle animation for whichever way the player is facing
+    private Animation walkAnim() {
+        switch (direction) {
+            case "up":    return walkUp;
+            case "left":  return walkLeft;
+            case "right": return walkRight;
+            default:      return walkDown;
+        }
+    }
+
+    private Animation idleAnim() {
+        switch (direction) {
+            case "up":    return idleUp;
+            case "left":  return idleLeft;
+            case "right": return idleRight;
+            default:      return idleDown;
+        }
+    }
+
     // ===== DAMAGE (the player's HP lives in GamePanel so the UI bar keeps working) =====
 
     @Override protected void applyDamage(int dmg) { gp.playerHP = Math.max(0, gp.playerHP - dmg); }
     @Override public boolean isDead() { return gp.playerHP <= 0; }
+
+    // Invincibility frames: nothing can hurt the player while dashing.
+    // (Bullets check the return value, so they fly right through.)
+    @Override
+    public boolean takeDamage(int rawDamage, int fromX, int fromY, double knockbackPower) {
+        if (dashing) return false;
+        return super.takeDamage(rawDamage, fromX, fromY, knockbackPower);
+    }
+
+    public boolean isDashing() { return dashing; }
+
+    // True when a dash could be started right now (enemies peek at this to read you)
+    public boolean dashReady() { return !dashing && dashCooldownTimer <= 0 && kbTimer <= 0; }
 
     // Death = respawn at the start with full HP and fresh enemies (until a game-over screen exists).
     private void respawn() {
         gp.playerHP = gp.playerMaxHP;
         setDefaultValues();
         attacking = false;
+        dashing = false;
+        dashTimer = 0;
+        dashCooldownTimer = 0;
+        ghosts.clear();
         kbTimer = 0;
         invincibleTimer = 60;
         gp.enemyM.respawnAll();
@@ -123,6 +178,8 @@ public class player extends entity {
         if (isDead()) { respawn(); updateCamera(); return; }
 
         tickCombat();
+        ghosts.tick();                                   // after-images keep fading even after the dash
+        if (dashCooldownTimer > 0) dashCooldownTimer--;
 
         // Hit-stun: while being knocked back, the player can't act
         if (kbTimer > 0) {
@@ -130,6 +187,23 @@ public class player extends entity {
             updateKnockback(gp);
             updateCamera();
             return;
+        }
+
+        // ----- DASH -----
+        // One dash per key press. Dashing also cancels a sword swing, like a dodge-cancel.
+        if (KeyH.dashPressed) {
+            if (!dashLatch) {
+                dashLatch = true;
+                if (dashReady()) startDash();
+            }
+        } else {
+            dashLatch = false;
+        }
+
+        if (dashing) {
+            updateDash();
+            updateCamera();
+            return;   // no walking or attacking mid-dash
         }
 
         // ----- ATTACK -----
@@ -156,34 +230,21 @@ public class player extends entity {
             return;   // no walking while attacking
         }
 
-        // ----- MOVEMENT (with tile collision) -----
+        // ----- MOVEMENT (8 directions, with tile collision) -----
         moving = false;
 
-        if (KeyH.upPressed) {
-            moveWithCollision(gp, 0, -speed);
-            direction = "up";
-            moving = true;
-        } else if (KeyH.downPressed) {
-            moveWithCollision(gp, 0, speed);
-            direction = "down";
-            moving = true;
-        } else if (KeyH.leftPressed) {
-            moveWithCollision(gp, -speed, 0);
-            direction = "left";
-            moving = true;
-        } else if (KeyH.rightPressed) {
-            moveWithCollision(gp, speed, 0);
-            direction = "right";
+        int dx = (KeyH.rightPressed ? 1 : 0) - (KeyH.leftPressed ? 1 : 0);
+        int dy = (KeyH.downPressed  ? 1 : 0) - (KeyH.upPressed   ? 1 : 0);
+
+        if (dx != 0 || dy != 0) {
+            // Dividing by the length keeps diagonals the same speed as straight lines
+            double len = Math.sqrt(dx * dx + dy * dy);
+            moveBy(gp, dx / len * speed, dy / len * speed);
+            faceInput(dx, dy);
             moving = true;
         }
 
-        Animation next = idleDown;
-        switch (direction) {
-            case "up":    next = moving ? walkUp    : idleUp;    break;
-            case "down":  next = moving ? walkDown  : idleDown;  break;
-            case "left":  next = moving ? walkLeft  : idleLeft;  break;
-            case "right": next = moving ? walkRight : idleRight; break;
-        }
+        Animation next = moving ? walkAnim() : idleAnim();
         if (next != currentAnim) {
             currentAnim = next;
             currentAnim.reset();
@@ -191,6 +252,64 @@ public class player extends entity {
         currentAnim.tick();
 
         updateCamera();
+    }
+
+    // The sprite sheet only has 4 directions. Going diagonally keeps the current facing if it
+    // matches one of the held keys (so it doesn't flicker), otherwise it faces left/right.
+    private void faceInput(int dx, int dy) {
+        String h = dx > 0 ? "right" : "left";
+        String v = dy > 0 ? "down" : "up";
+        if (dx != 0 && dy != 0) {
+            if (!direction.equals(h) && !direction.equals(v)) direction = h;
+        } else if (dx != 0) {
+            direction = h;
+        } else if (dy != 0) {
+            direction = v;
+        }
+    }
+
+    // ===== DASH =====
+
+    // Dashes the way you are holding the keys (diagonals included), or forward if no key is held.
+    private void startDash() {
+        int dx = (KeyH.rightPressed ? 1 : 0) - (KeyH.leftPressed ? 1 : 0);
+        int dy = (KeyH.downPressed  ? 1 : 0) - (KeyH.upPressed   ? 1 : 0);
+
+        if (dx == 0 && dy == 0) {                       // no keys held: dash where you're facing
+            switch (direction) {
+                case "up":    dy = -1; break;
+                case "left":  dx = -1; break;
+                case "right": dx = 1;  break;
+                default:      dy = 1;  break;
+            }
+        }
+        double len = Math.sqrt(dx * dx + dy * dy);
+        dashDX = dx / len;
+        dashDY = dy / len;
+        faceInput(dx, dy);
+
+        dashing = true;
+        dashTimer = DASH_TICKS;
+        attacking = false;
+        moving = true;
+        currentAnim = walkAnim();
+        currentAnim.reset();
+
+        ghosts.add(currentAnim.current(), x, y);        // first after-image where the dash began
+
+        // Enemies that are paying attention take note of this dash (they learn your habits)
+        for (enemy e : gp.enemyM.enemies) e.onPlayerDash(dashDX, dashDY);
+    }
+
+    private void updateDash() {
+        moveBy(gp, dashDX * DASH_SPEED, dashDY * DASH_SPEED);
+        currentAnim.tick();
+        if (dashTimer % GHOST_EVERY == 0) ghosts.add(currentAnim.current(), x, y);
+
+        if (--dashTimer <= 0) {
+            dashing = false;
+            dashCooldownTimer = DASH_COOLDOWN;
+        }
     }
 
     // The sword swing: damages every enemy inside a box in front of the player.
@@ -210,11 +329,21 @@ public class player extends entity {
     // ===== DRAW =====
 
     public void draw(Graphics2D g2) {
+        int size = gp.tileSize * 2;
+
+        // After-images go underneath the real sprite
+        ghosts.draw(g2, camX, camY, size);
+
         // Blink while invulnerable after a hit
         if (invincibleTimer > 0 && (invincibleTimer / 3) % 2 == 0) return;
 
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-        g2.drawImage(currentAnim.current(), screenX, screenY, gp.tileSize * 2, gp.tileSize * 2, null);
+        g2.drawImage(currentAnim.current(), screenX, screenY, size, size, null);
+
+        if (DEBUG_HURTBOX) {
+            g2.setColor(Color.RED);
+            g2.drawRect(screenX + hurtX, screenY + hurtY, hurtW, hurtH);
+        }
     }
 }

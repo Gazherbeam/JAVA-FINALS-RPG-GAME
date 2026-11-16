@@ -24,13 +24,6 @@ public class UI {
     public boolean showFPS = false;
     public int volume = 5;                      // 0-10, not connected to sound yet
 
-    // ----- Battle placeholder data (replace with real battle data later) -----
-    public final String[] battleOptions = {"Fight", "Item", "Swap", "Run"};
-    public String battleEnemyName = "Enemy";
-    public String battlePlayerName = "Hero";
-    public int enemyHP = 100, enemyMaxHP = 100;
-    public String battleMessage = "What will you do?";
-
     // ----- Inventory menu state (changed by GamePanel) -----
     public int invIndex = 0;          // which slot the cursor is on
     public String invMessage = "";    // short feedback line ("Used Potion.")
@@ -41,7 +34,13 @@ public class UI {
     BufferedImage panel, ribbon;
     BufferedImage slotNormal, slotSelected;
     BufferedImage toggleOn, toggleOff;
+    BufferedImage barFrame, barTrough, barFill, barFillRed;
 
+    // ----- Background -----
+    BufferedImage bgImage;
+    static final String BG_PATH = "/fantasy-backgrounds-free-v1.0.1/fantasy-backgrounds-free/320x160/harbor_day.png";
+    static final int PAN_SPEED = 30;   // pixels per second
+    static final int DIM_ALPHA = 110;   // 0 = no darkening, 255 = black. Lower is lighter.
     // ----- Fonts -----
     Font fontBig, fontMid, fontSmall;
 
@@ -75,13 +74,21 @@ public class UI {
 
     // ===== LOADING =====
 
+    private BufferedImage load(String file) {
+        return loadResource(BASE + file);
+    }
+
+    private BufferedImage loadResource(String path) {
         try (InputStream in = getClass().getResourceAsStream(path)) {
-            return null;
-        }
+            if (in == null) return null;
             return ImageIO.read(in);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private BufferedImage loadAbsolute(String path) {
+        return loadResource(path);
     }
 
     // Item icons live in res/items/. Each one is loaded once, then reused.
@@ -118,11 +125,15 @@ public class UI {
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);               // crisp pixel font
 
+        // Menus that open on top of the game show the frozen, darkened world.
+        // The other screens (title, settings, credits) use the panning PNG.
+        boolean overWorld = gp.gameState == gp.inventoryState;
+        if (overWorld) drawWorldBackdrop();
+        else           drawBackground();
 
         if (gp.gameState == gp.titleState)     drawTitle();
         if (gp.gameState == gp.settingsState)  drawSettings();
         if (gp.gameState == gp.creditsState)   drawCredits();
-        if (gp.gameState == gp.battleState)    drawBattle();
         if (gp.gameState == gp.inventoryState) drawInventory();
     }
 
@@ -187,6 +198,9 @@ public class UI {
         int row1Y = row0Y + 105;
         drawRow(rowX, row1Y, rowW, rowH, menuIndex == 1);
         drawLabel("Volume", rowX + 30, row1Y, rowH);
+        drawBar(rowX + rowW - 30 - barFrame.getWidth() * S,
+                row1Y + (rowH - barFrame.getHeight() * S) / 2,
+                volume / 10.0, barFill);
 
         // Row 2: Back (button)
         int btnW = 300, btnH = 78;
@@ -213,31 +227,6 @@ public class UI {
 
         drawButton("Back", (gp.screenWidth - 300) / 2, panelY + panelH + 25, 300, 78, true);
         drawHint("Enter, J or Esc: back");
-    }
-
-    // Placeholder battle layout. Reads the dummy fields above; swap them for your battle data later.
-    private void drawBattle() {
-        // Enemy info (top left) and player info (middle right)
-        drawInfoBox(40, 40, 400, 110, battleEnemyName, enemyHP, enemyMaxHP);
-        drawInfoBox(gp.screenWidth - 440, 250, 400, 110, battlePlayerName, gp.playerHP, gp.playerMaxHP);
-
-        // Bottom panel: message + 2x2 command buttons
-        int panelX = 24, panelY = 400, panelW = gp.screenWidth - 48, panelH = 320;
-        nineSlice(panel, 11, 11, 11, 11, panelX, panelY, panelW, panelH);
-
-        g2.setFont(fontMid);
-        g2.setColor(inkDark);
-        g2.drawString(battleMessage, panelX + 30, panelY + 60);
-
-        int btnW = 320, btnH = 78;
-        for (int i = 0; i < battleOptions.length; i++) {
-            int col = i % 2, row = i / 2;
-            int bx = panelX + 30 + col * (btnW + 20);
-            int by = panelY + 100 + row * 100;
-            drawButton(battleOptions[i], bx, by, btnW, btnH, i == menuIndex);
-        }
-
-        drawHint("W/A/S/D: move     Enter or J: select     Esc: leave");
     }
 
     // Item grid on top, description box underneath. Reads gp.inventory, never changes it.
@@ -313,6 +302,8 @@ public class UI {
 
     // Red ribbon with a title. The forked ends stay whole, the middle stretches.
     private void drawRibbon(String text, int y) {
+        int w = ribbon.getWidth() * S;
+        int h = ribbon.getHeight() * S;
         int x = (gp.screenWidth - w) / 2;
         nineSlice(ribbon, 15, 0, 15, 0, x, y, w, h);
         g2.setFont(fontBig);
@@ -325,6 +316,7 @@ public class UI {
         nineSlice(img, 9, 9, 9, 10, x, y, w, h);   // state files have 1px padding, so margins are +1
         g2.setFont(fontMid);
         int ty = y + (h + g2.getFontMetrics().getAscent()) / 2 - 6;
+        drawCentered(text, ty, inkLight, x + w / 2);
     }
 
     private void drawRow(int x, int y, int w, int h, boolean selected) {
@@ -337,6 +329,7 @@ public class UI {
         g2.drawString(text, x, rowY + (rowH + g2.getFontMetrics().getAscent()) / 2 - 3);
     }
 
+    private void drawBar(int x, int y, double fillRatio, BufferedImage fillArt) {
         g2.drawImage(barFrame, x, y, barFrame.getWidth() * S, barFrame.getHeight() * S, null);
 
         // The cavity inside the frame starts at (10, 5) in art pixels
@@ -344,7 +337,14 @@ public class UI {
         int cw = barTrough.getWidth() * S, ch = barTrough.getHeight() * S;
         g2.drawImage(barTrough, cx, cy, cw, ch, null);
 
-        if (fillArt > 0) {
+        if (fillArt != null && fillRatio > 0) {
+
+            int fillW = (int) (cw * fillRatio);
+            int srcW = (int) (fillArt.getWidth() * fillRatio);
+            if (srcW > 0) {
+                g2.drawImage(fillArt, cx, cy, cx + fillW, cy + ch,
+                        0, 0, srcW, fillArt.getHeight(), null);
+            }
         }
     }
 
@@ -357,6 +357,14 @@ public class UI {
 
     // Centered on the whole screen.
     private void drawCentered(String text, int y, Color color) {
+        int x = (gp.screenWidth - g2.getFontMetrics().stringWidth(text)) / 2;
+        g2.setColor(color);
+        g2.drawString(text, x, y);
+    }
+
+    // Centered at a specific x position.
+    private void drawCentered(String text, int y, Color color, int centerX) {
+        int x = centerX - g2.getFontMetrics().stringWidth(text) / 2;
         g2.setColor(color);
         g2.drawString(text, x, y);
     }
@@ -402,7 +410,18 @@ public class UI {
             }
         }
     }
-// Draws the background image, slowly panning left and right.
+
+    // Draws the game world (frozen, because update() is paused) and darkens it slightly.
+    private void drawWorldBackdrop() {
+        gp.tileM.draw(g2);
+        gp.enemyM.draw(g2);
+        gp.Player.draw(g2);
+
+        g2.setColor(new Color(0, 0, 0, DIM_ALPHA));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+    }
+
+    // Draws the background image, slowly panning left and right.
     private void drawBackground() {
         if (bgImage == null) {                       // no image found: plain color fallback
             g2.setColor(background);

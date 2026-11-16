@@ -1,12 +1,13 @@
 package main;
 
+import entity.EnemyManager;
 import entity.player;
 import tile.TileManager;
-
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import javax.swing.JPanel;
+
 
 public class GamePanel extends JPanel implements Runnable {
 
@@ -46,6 +47,7 @@ public class GamePanel extends JPanel implements Runnable {
     public Inventory inventory = new Inventory();
     public KeyHandler keyH = new KeyHandler();
     public player Player = new player(this, keyH);
+    public EnemyManager enemyM = new EnemyManager(this);
     Thread gameThread;
 
     public GamePanel() {
@@ -108,8 +110,11 @@ public class GamePanel extends JPanel implements Runnable {
         // The world only updates while playing. In menus, everything is paused.
         if (gameState == playState) {
             Player.update();
+            enemyM.update();      // <-- must be here
         }
     }
+
+
 
     @Override
     public void paintComponent(Graphics g) {
@@ -119,6 +124,7 @@ public class GamePanel extends JPanel implements Runnable {
         // the map is drawn under the inventory so the menu appears over the game
         if (gameState == playState || gameState == inventoryState) {
             tileM.draw(g2);
+            enemyM.draw(g2);
             Player.draw(g2);
         }
 
@@ -210,11 +216,6 @@ public class GamePanel extends JPanel implements Runnable {
             gameState = inventoryState;
         }
         // TEMPORARY: press B to open the battle screen so you can see it
-        if (keyCode == KeyEvent.VK_B) {
-            ui.resetBattleDummy();
-            ui.menuIndex = 0;
-            gameState = battleState;
-        }
     }
 
     private void handleInventory(int keyCode, boolean up, boolean down, boolean left, boolean right,
@@ -264,12 +265,12 @@ public class GamePanel extends JPanel implements Runnable {
         // TEMPORARY dummy behaviour, replace with your real battle logic
         if (confirm) {
             if (ui.menuIndex == 0) {
-                ui.enemyHP = Math.max(0, ui.enemyHP - 10);
-                ui.battleMessage = ui.enemyHP == 0 ? "Enemy fainted!" : "Enemy took 10 damage!";
+
+
             } else if (ui.menuIndex == 3) {
                 gameState = playState;
             } else {
-                ui.battleMessage = "Not added yet.";
+
             }
         }
     }

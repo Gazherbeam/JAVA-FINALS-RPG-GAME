@@ -1,0 +1,12 @@
+StationSupply - Pixel RPG UI Free Sample
+Asset License, version 1.0
+
+You may use these assets in commercial and non-commercial games and other finished creative projects, modify them for those projects, and distribute them embedded in those projects. No royalties or attribution are required. You may share the assets privately with collaborators working on your licensed project.
+
+You may not resell, repackage, sublicense or redistribute the assets as standalone files, asset packs, templates or libraries, whether as-is or modified. You may not claim authorship of the original assets. Distributing a finished game containing the assets is allowed; offering extractable source asset collections is not.
+
+The same terms apply to any free sample. No exclusive rights are granted. Assets are provided as-is, without warranty, to the extent permitted by applicable law.
+
+The fonts in fonts/ (Press Start 2P and Silkscreen) are licensed separately under the SIL Open Font License 1.1, see the OFL files in fonts/.
+
+AI-assisted disclosure: graphics generated with AI image generation, then converted to true pixel art by StationSupply's Pixel Forge tool; colour themes, interaction states, 9-slice data and screens produced by code; the Godot demo code was written with an AI assistant.

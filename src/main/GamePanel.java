@@ -51,6 +51,7 @@ public class GamePanel extends JPanel implements Runnable {
     Thread gameThread;
 
     public GamePanel() {
+        Player.slashFx.setScale(4); // COPILOT EDIT
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setBackground(Color.black);
         this.setDoubleBuffered(true);
@@ -217,6 +218,7 @@ public class GamePanel extends JPanel implements Runnable {
         }
         // TEMPORARY: press B to open the battle screen so you can see it
     }
+
 
     private void handleInventory(int keyCode, boolean up, boolean down, boolean left, boolean right,
                                  boolean confirm, boolean back) {

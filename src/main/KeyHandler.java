@@ -5,7 +5,7 @@ import java.awt.event.KeyListener;
 
 public class KeyHandler implements KeyListener {
 
-    public boolean upPressed, downPressed, leftPressed, rightPressed, attackPressed, dashPressed;
+    public boolean upPressed, downPressed, leftPressed, rightPressed, attackPressed, dashPressed, bigSwingPressed;
 
     @Override
     public void keyTyped(KeyEvent e) {}
@@ -32,6 +32,9 @@ public class KeyHandler implements KeyListener {
         if (code == KeyEvent.VK_X) {      // dash
             dashPressed = true;
         }
+        if (code == KeyEvent.VK_C) {      // big swing
+            bigSwingPressed = true;
+        }
     }
 
     // Releases are always processed, so keys never get "stuck" after a state change
@@ -56,6 +59,9 @@ public class KeyHandler implements KeyListener {
         }
         if (code == KeyEvent.VK_X) {
             dashPressed = false;
+        }
+        if (code == KeyEvent.VK_C) {
+            bigSwingPressed = false;
         }
     }
 }

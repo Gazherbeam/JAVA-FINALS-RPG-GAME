@@ -18,7 +18,7 @@ public class player extends entity {
     Animation currentAnim;
     boolean moving = false;
     boolean attacking = false;
-    boolean attackLatch = false;   // one attack per J press
+    boolean attackLatch = false;   // one attack per Z press
 
     // ----- Attack settings -----
     int attackTicks = 0;                    // how long the current swing has lasted
@@ -38,6 +38,16 @@ public class player extends entity {
     int dashCooldownTimer = 0;
     boolean dashLatch = false;     // one dash per key press
     double dashDX, dashDY;         // dash direction (unit vector)
+
+    // ----- Big swing settings (press C) -----
+    public static final int BIG_SWING_COOLDOWN = 90;
+    public static final int BIG_SWING_DAMAGE = 40;
+    public static final double BIG_SWING_KNOCKBACK = 18;
+    static final int BIG_SWING_REACH = 100, BIG_SWING_WIDTH = 100;
+    boolean bigSwinging = false;
+    int bigSwingCooldownTimer = 0;
+    boolean bigSwingLatch = false;
+    public final SlashEffect slashFx = new SlashEffect();
 
     // The white after-images: they last 14 ticks and start at 50% opacity
     public final AfterImages ghosts = new AfterImages(14, 0.5f);
@@ -143,7 +153,12 @@ public class player extends entity {
     public boolean isDashing() { return dashing; }
 
     // True when a dash could be started right now (enemies peek at this to read you)
-    public boolean dashReady() { return !dashing && dashCooldownTimer <= 0 && kbTimer <= 0; }
+    public boolean dashReady() { return !dashing && !bigSwinging && dashCooldownTimer <= 0 && kbTimer <= 0; }
+
+    public boolean isBigSwinging() { return bigSwinging; }
+    public boolean bigSwingReady() { return !bigSwinging && bigSwingCooldownTimer <= 0 && kbTimer <= 0; }
+    // 0 = ready, 1 = just used. Handy for a cooldown icon in the HUD.
+    public double bigSwingCooldownRatio() { return bigSwingCooldownTimer / (double) BIG_SWING_COOLDOWN; }
 
     // Death = respawn at the start with full HP and fresh enemies (until a game-over screen exists).
     private void respawn() {
@@ -153,6 +168,8 @@ public class player extends entity {
         dashing = false;
         dashTimer = 0;
         dashCooldownTimer = 0;
+        bigSwinging = false;
+        bigSwingCooldownTimer = 0;
         ghosts.clear();
         kbTimer = 0;
         invincibleTimer = 60;
@@ -180,24 +197,47 @@ public class player extends entity {
         tickCombat();
         ghosts.tick();                                   // after-images keep fading even after the dash
         if (dashCooldownTimer > 0) dashCooldownTimer--;
+        if (bigSwingCooldownTimer > 0) bigSwingCooldownTimer--;
+        slashFx.tick();
 
         // Hit-stun: while being knocked back, the player can't act
         if (kbTimer > 0) {
             attacking = false;
+            bigSwinging = false;
             updateKnockback(gp);
             updateCamera();
             return;
         }
 
+        // Pressing X and C together starts the dash and big swing as one combo.
+        boolean dashSwingCombo = KeyH.dashPressed && KeyH.bigSwingPressed
+                && !dashLatch && !bigSwingLatch && dashReady() && bigSwingReady();
+        if (dashSwingCombo) {
+            dashLatch = true;
+            bigSwingLatch = true;
+            startDash();
+            startAttack(true);
+        }
+
         // ----- DASH -----
         // One dash per key press. Dashing also cancels a sword swing, like a dodge-cancel.
-        if (KeyH.dashPressed) {
+        if (!dashSwingCombo && KeyH.dashPressed) {
             if (!dashLatch) {
                 dashLatch = true;
                 if (dashReady()) startDash();
             }
-        } else {
+        } else if (!KeyH.dashPressed) {
             dashLatch = false;
+        }
+
+        // The big swing can be started during a dash; its attack animation and hit run alongside the dash.
+        if (!dashSwingCombo && KeyH.bigSwingPressed) {
+            if (!bigSwingLatch) {
+                bigSwingLatch = true;
+                if (!attacking && bigSwingReady()) startAttack(true);
+            }
+        } else if (!KeyH.bigSwingPressed) {
+            bigSwingLatch = false;
         }
 
         if (dashing) {
@@ -208,24 +248,13 @@ public class player extends entity {
 
         // ----- ATTACK -----
         if (KeyH.attackPressed && !attacking && !attackLatch) {
-            attacking = true;
             attackLatch = true;
-            attackTicks = 0;
-            switch (direction) {
-                case "up":    currentAnim = attackUp;    break;
-                case "down":  currentAnim = attackDown;  break;
-                case "left":  currentAnim = attackLeft;  break;
-                case "right": currentAnim = attackRight; break;
-            }
-            currentAnim.reset();
+            startAttack(false);
         }
         if (!KeyH.attackPressed) attackLatch = false;
 
         if (attacking) {
-            currentAnim.tick();
-            attackTicks++;
-            if (attackTicks == ATTACK_HIT_TICK) swing();
-            if (currentAnim.isFinished()) attacking = false;
+            updateAttack();
             updateCamera();
             return;   // no walking while attacking
         }
@@ -303,7 +332,15 @@ public class player extends entity {
 
     private void updateDash() {
         moveBy(gp, dashDX * DASH_SPEED, dashDY * DASH_SPEED);
-        currentAnim.tick();
+        if (bigSwinging) {
+            updateAttack();
+            if (!bigSwinging) {
+                currentAnim = walkAnim();
+                currentAnim.reset();
+            }
+        } else {
+            currentAnim.tick();
+        }
         if (dashTimer % GHOST_EVERY == 0) ghosts.add(currentAnim.current(), x, y);
 
         if (--dashTimer <= 0) {
@@ -312,10 +349,47 @@ public class player extends entity {
         }
     }
 
+    private void startAttack(boolean bigSwing) {
+        attacking = true;
+        bigSwinging = bigSwing;
+        attackTicks = 0;
+        switch (direction) {
+            case "up":    currentAnim = attackUp;    break;
+            case "down":  currentAnim = attackDown;  break;
+            case "left":  currentAnim = attackLeft;  break;
+            case "right": currentAnim = attackRight; break;
+        }
+        currentAnim.reset();
+        if (bigSwing) slashFx.start();
+    }
+
+    private void updateAttack() {
+        currentAnim.tick();
+        attackTicks++;
+        if (attackTicks == ATTACK_HIT_TICK) {
+            if (bigSwinging) bigSwing();
+            else swing();
+        }
+        if (currentAnim.isFinished()) {
+            attacking = false;
+            if (bigSwinging) {
+                bigSwinging = false;
+                bigSwingCooldownTimer = BIG_SWING_COOLDOWN;
+            }
+        }
+    }
+
     // The sword swing: damages every enemy inside a box in front of the player.
     private void swing() {
+        swing(60, 56, attackDamage, attackKnockback);
+    }
+
+    private void bigSwing() {
+        swing(BIG_SWING_REACH, BIG_SWING_WIDTH, BIG_SWING_DAMAGE, BIG_SWING_KNOCKBACK);
+    }
+
+    private void swing(int reach, int width, int damage, double knockback) {
         int cx = centerX(), cy = centerY();
-        int reach = 60, width = 56;
         Rectangle area;
         switch (direction) {
             case "up":    area = new Rectangle(cx - width / 2, cy - reach, width, reach); break;
@@ -323,7 +397,7 @@ public class player extends entity {
             case "right": area = new Rectangle(cx, cy - width / 2, reach, width); break;
             default:      area = new Rectangle(cx - width / 2, cy, width, reach); break;
         }
-        gp.enemyM.hitEnemies(area, attackDamage, cx, cy, attackKnockback);
+        gp.enemyM.hitEnemies(area, damage, cx, cy, knockback);
     }
 
     // ===== DRAW =====
@@ -335,15 +409,19 @@ public class player extends entity {
         ghosts.draw(g2, camX, camY, size);
 
         // Blink while invulnerable after a hit
-        if (invincibleTimer > 0 && (invincibleTimer / 3) % 2 == 0) return;
+        boolean blinkOff = invincibleTimer > 0 && (invincibleTimer / 3) % 2 == 0;
 
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-        g2.drawImage(currentAnim.current(), screenX, screenY, size, size, null);
+        if (!blinkOff) {
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            g2.drawImage(currentAnim.current(), screenX, screenY, size, size, null);
 
-        if (DEBUG_HURTBOX) {
-            g2.setColor(Color.RED);
-            g2.drawRect(screenX + hurtX, screenY + hurtY, hurtW, hurtH);
+            if (DEBUG_HURTBOX) {
+                g2.setColor(Color.RED);
+                g2.drawRect(screenX + hurtX, screenY + hurtY, hurtW, hurtH);
+            }
         }
+
+        slashFx.draw(g2, centerX() - camX, centerY() - camY, direction);
     }
 }

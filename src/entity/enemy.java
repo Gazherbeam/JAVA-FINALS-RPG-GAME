@@ -46,6 +46,8 @@ public class enemy extends entity {
     static final String SHEET = "/PostApocalypse AssetPack/player/Warrior-Red.png";
     static final int[] ROWS = {0, 2, 4, 6};   // sprite sheet row for down, right, up, left
     static final Map<String, BufferedImage[][]> FRAME_CACHE = new HashMap<>();
+    // Copilot: Edit - Keep the player sheet as the default and allow each enemy type to use its own character sheet.
+    private static final Map<String, String> ENEMY_SHEETS = new HashMap<>();
 
     public enemy(GamePanel gp, String type) {
         this.gp = gp;
@@ -54,6 +56,18 @@ public class enemy extends entity {
         configure(type);
         hp = maxHP;
         buildAnimations();
+    }
+
+    // Copilot: Add - Register a 32x32-frame, six-column enemy sheet before spawning that enemy type.
+    public static void registerSpriteSheet(String enemyType, String resourcePath) {
+        if (enemyType == null || enemyType.trim().isEmpty()) {
+            throw new IllegalArgumentException("Enemy type must not be blank");
+        }
+        if (resourcePath == null || !resourcePath.startsWith("/") || resourcePath.trim().isEmpty()) {
+            throw new IllegalArgumentException("Sprite resource path must be an absolute classpath path");
+        }
+        ENEMY_SHEETS.put(enemyType, resourcePath);
+        FRAME_CACHE.remove(enemyType);
     }
 
     // ===== TYPES =====
@@ -108,17 +122,22 @@ public class enemy extends entity {
         loseRadius = (int) (detectRadius * 1.6);
     }
 
-    // ===== PLACEHOLDER SPRITES =====
-    // Reuses the player's sprite sheet, recolored per type. Replace later by loading real sheets.
+    // ===== ENEMY SPRITES =====
 
     private BufferedImage[][] loadFrames() {
         BufferedImage[][] cached = FRAME_CACHE.get(type);
         if (cached != null) return cached;
 
         BufferedImage[][] f = new BufferedImage[8][6];
+        String sheetPath = ENEMY_SHEETS.getOrDefault(type, SHEET);
         try {
-            SpriteSheet sheet = new SpriteSheet(SHEET, 32, 32);
-            for (int r : ROWS) for (int c = 0; c < 6; c++) f[r][c] = tint(sheet.get(r, c), tint);
+            SpriteSheet sheet = new SpriteSheet(sheetPath, 32, 32);
+            for (int r : ROWS) {
+                for (int c = 0; c < 6; c++) {
+                    BufferedImage frame = sheet.get(r, c);
+                    f[r][c] = sheetPath.equals(SHEET) ? tint(frame, tint) : frame;
+                }
+            }
         } catch (Exception e) {
             // Sheet missing: draw plain colored squares so enemies are never invisible
             for (int r : ROWS) for (int c = 0; c < 6; c++) f[r][c] = fallback(tint);
@@ -167,10 +186,11 @@ public class enemy extends entity {
 
     int volley = 0;   // counts attacks so the shooter can cycle its patterns
 
+    // Copilot: Edit - Give shooter shots static TailBullet/HeadBullet sprites without animating them.
     // Fires one bullet at an angle (radians)
     private void fire(double angle, double bulletSpeed) {
         double tx = centerX() + Math.cos(angle) * 100, ty = centerY() + Math.sin(angle) * 100;
-        gp.enemyM.projectiles.add(new projectile(gp, centerX(), centerY(), tx, ty, bulletSpeed, damage));
+        gp.enemyM.projectiles.add(new projectile(gp, centerX(), centerY(), tx, ty, bulletSpeed, damage, true));
     }
 
     public void onPlayerDash(double dx, double dy) {

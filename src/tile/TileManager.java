@@ -108,7 +108,7 @@ public class TileManager {
             palette[i].image = onTop(palette[i].image, skyTile);
         }
 
-        loadMap("/maps/village01.txt"); // Loads the maps
+        loadMap("/maps/Landfill.txt"); // Loads the maps
     }
 
     private BufferedImage onTop(BufferedImage foreground, BufferedImage background) {

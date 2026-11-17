@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 // One enemy. The type decides its stats and behavior:
 //   "melee"  walks up and hits you        "fast"   quick and weak
@@ -44,14 +45,31 @@ public class enemy extends entity {
     Animation currentAnim;
 
     static final String SHEET = "/PostApocalypse AssetPack/player/Warrior-Red.png";
+    // Copilot: Add - Provide character sheets for random enemy appearances.
+    private static final String[] PUNY_MONSTER_SHEETS = {
+            "/PunyMonsters/Black-Panther-32x32.png",
+            "/PunyMonsters/Blonde-Dog-32x32.png",
+            "/PunyMonsters/Brown-Boar-32x32.png",
+            "/PunyMonsters/Brown-Spider-32x32.png",
+            "/PunyMonsters/Dirty-Gray-Boar-32x32.png",
+            "/PunyMonsters/Gray-Wolf-32x32.png",
+            "/PunyMonsters/Navy-Blue-Rat-32x32.png",
+            "/PunyMonsters/Orange-Cat-32x32.png",
+            "/PunyMonsters/Purple-Spider-32x32.png"
+    };
     static final int[] ROWS = {0, 2, 4, 6};   // sprite sheet row for down, right, up, left
     static final Map<String, BufferedImage[][]> FRAME_CACHE = new HashMap<>();
-    // Copilot: Edit - Keep the player sheet as the default and allow each enemy type to use its own character sheet.
+    // Copilot: Edit - Allow configured enemy types to override their randomly selected character sheet.
     private static final Map<String, String> ENEMY_SHEETS = new HashMap<>();
+    private final String spriteSheetPath;
 
     public enemy(GamePanel gp, String type) {
         this.gp = gp;
         this.type = type;
+        // Copilot: Edit - Randomly assign each enemy its own PunyMonsters character sheet unless its type is configured.
+        String configuredSheet = ENEMY_SHEETS.get(type);
+        spriteSheetPath = configuredSheet != null ? configuredSheet
+                : PUNY_MONSTER_SHEETS[ThreadLocalRandom.current().nextInt(PUNY_MONSTER_SHEETS.length)];
         this.direction = "down";
         configure(type);
         hp = maxHP;
@@ -67,7 +85,7 @@ public class enemy extends entity {
             throw new IllegalArgumentException("Sprite resource path must be an absolute classpath path");
         }
         ENEMY_SHEETS.put(enemyType, resourcePath);
-        FRAME_CACHE.remove(enemyType);
+        FRAME_CACHE.remove(resourcePath);
     }
 
     // ===== TYPES =====
@@ -125,24 +143,23 @@ public class enemy extends entity {
     // ===== ENEMY SPRITES =====
 
     private BufferedImage[][] loadFrames() {
-        BufferedImage[][] cached = FRAME_CACHE.get(type);
+        BufferedImage[][] cached = FRAME_CACHE.get(spriteSheetPath);
         if (cached != null) return cached;
 
         BufferedImage[][] f = new BufferedImage[8][6];
-        String sheetPath = ENEMY_SHEETS.getOrDefault(type, SHEET);
         try {
-            SpriteSheet sheet = new SpriteSheet(sheetPath, 32, 32);
+            SpriteSheet sheet = new SpriteSheet(spriteSheetPath, 32, 32);
             for (int r : ROWS) {
                 for (int c = 0; c < 6; c++) {
                     BufferedImage frame = sheet.get(r, c);
-                    f[r][c] = sheetPath.equals(SHEET) ? tint(frame, tint) : frame;
+                    f[r][c] = spriteSheetPath.equals(SHEET) ? tint(frame, tint) : frame;
                 }
             }
         } catch (Exception e) {
             // Sheet missing: draw plain colored squares so enemies are never invisible
             for (int r : ROWS) for (int c = 0; c < 6; c++) f[r][c] = fallback(tint);
         }
-        FRAME_CACHE.put(type, f);
+        FRAME_CACHE.put(spriteSheetPath, f);
         return f;
     }
 

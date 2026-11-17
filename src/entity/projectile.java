@@ -11,7 +11,7 @@ import javax.imageio.ImageIO;
 // A bullet fired by an enemy. Dies when it hits a wall, the player, or runs out of life.
 public class projectile {
 
-    private static final String TRAIL_SHEET = "/Basic Bullet Trail Free/Part 1/Part1_Column_1.png";
+    private static final String TRAIL_SHEET = "/particles/Basic Bullet Trail Free/Part 1/Part1_Column_1.png";
     private static final int TRAIL_TILE_SIZE = 32;
     private static final int TRAIL_TILE_COUNT = 16;
     private static final long BULLET_FRAME_TIME_MS = 50;

@@ -14,6 +14,7 @@ public class TileManager {
     GamePanel gp;
     int[][] map;                       // map[row][col] = palette number from map01.txt
     public int worldCols, worldRows;   // map size in tiles, detected from the map file
+    public String currentMapPath = "/maps/Landfill.txt";
 
     // Nickname -> list of 16x16 tiles from that PNG.
     java.util.Map<String, java.util.List<BufferedImage>> tilesets = new java.util.HashMap<>();
@@ -108,7 +109,7 @@ public class TileManager {
             palette[i].image = onTop(palette[i].image, skyTile);
         }
 
-        loadMap("/maps/Landfill.txt"); // Loads the maps
+        loadMap("/maps/Landfill.txt"); // Initial map
     }
 
     private BufferedImage onTop(BufferedImage foreground, BufferedImage background) {
@@ -149,9 +150,11 @@ public class TileManager {
     private Tile solid(String nickname, int number) { return new Tile(image(nickname, number), true); }
 
     // Reads map01.txt. The map can be any size.
-    private void loadMap(String path) {
+    public void loadMap(String path) {
         try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream(path)));
+            InputStream stream = getClass().getResourceAsStream(path);
+            if (stream == null) throw new FileNotFoundException("Map resource not found: " + path);
+            BufferedReader br = new BufferedReader(new InputStreamReader(stream));
             java.util.List<String[]> lines = new java.util.ArrayList<>();
             String line;
             while ((line = br.readLine()) != null) {
@@ -159,12 +162,17 @@ public class TileManager {
             }
             br.close();
 
+            if (lines.isEmpty()) throw new IOException("Map is empty: " + path);
             worldRows = lines.size();
             worldCols = lines.get(0).length;
             map = new int[worldRows][worldCols];
-            for (int row = 0; row < worldRows; row++)
+            for (int row = 0; row < worldRows; row++) {
+                if (lines.get(row).length != worldCols)
+                    throw new IOException("Map rows have different widths: " + path + " (row " + row + ")");
                 for (int col = 0; col < worldCols; col++)
                     map[row][col] = Integer.parseInt(lines.get(row)[col]);
+            }
+            currentMapPath = path;
         } catch (Exception e) {
             e.printStackTrace();
         }

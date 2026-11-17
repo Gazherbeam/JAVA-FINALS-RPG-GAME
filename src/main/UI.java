@@ -20,9 +20,10 @@ public class UI {
 
     public int menuIndex = 0;
     public final String[] titleOptions = {"Start Game", "Settings", "Credits", "Quit"};
-    public final int settingsOptionCount = 3;   // Show FPS, Volume, Back
+    public final int settingsOptionCount = 4;   // Show FPS, SFX, Volume, Back
     public boolean showFPS = false;
-    public int volume = 5;                      // 0-10, not connected to sound yet
+    public boolean sfxEnabled = true;           // Also controls background music
+    public int volume = 5;                      // Shared sound volume: 0-10
 
     // ----- Inventory menu state (changed by GamePanel) -----
     public int invIndex = 0;          // which slot the cursor is on
@@ -143,8 +144,13 @@ public class UI {
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
-        // HP bar, top left. Bar only, no number.
+        // HP bar, top left. Keep the existing HUD layout and add progression text below it.
         drawBar(12, 12, gp.playerMaxHP > 0 ? gp.playerHP / (double) gp.playerMaxHP : 0, barFillRed);
+
+        g2.setFont(fontSmall);
+        g2.setColor(Color.WHITE);
+        g2.drawString("LV " + gp.progression.level + "   EXP "
+                + gp.progression.experience + "/" + gp.progression.experienceToNext, 12, 62);
 
         if (showFPS) {
             g2.setFont(fontSmall);
@@ -178,35 +184,45 @@ public class UI {
     private void drawSettings() {
         drawRibbon("SETTINGS", 100);
 
-        int panelW = 600, panelH = 420;
-        int panelX = (gp.screenWidth - panelW) / 2, panelY = 190;
+        int panelW = 600, panelH = 520;
+        int panelX = (gp.screenWidth - panelW) / 2, panelY = 145;
         nineSlice(panel, 11, 11, 11, 11, panelX, panelY, panelW, panelH);
 
-        int rowX = panelX + 45, rowW = panelW - 90, rowH = 84;
+        int rowX = panelX + 45, rowW = panelW - 90, rowH = 72;
 
-        // Row 0: Show FPS (toggle switch)
-        int row0Y = panelY + 50;
+        // Row 0: Show FPS toggle.
+        int row0Y = panelY + 35;
         drawRow(rowX, row0Y, rowW, rowH, menuIndex == 0);
         drawLabel("Show FPS", rowX + 30, row0Y, rowH);
-        BufferedImage t = showFPS ? toggleOn : toggleOff;
-        if (t != null) {
-            int tw = t.getWidth() * S, th = t.getHeight() * S;
-            g2.drawImage(t, rowX + rowW - 30 - tw, row0Y + (rowH - th) / 2, tw, th, null);
-        }
+        drawToggle(showFPS, rowX + rowW - 30, row0Y, rowH);
 
-        // Row 1: Volume (bar)
-        int row1Y = row0Y + 105;
+        // Row 1: SFX toggle. This also mutes background music.
+        int row1Y = row0Y + 90;
         drawRow(rowX, row1Y, rowW, rowH, menuIndex == 1);
-        drawLabel("Volume", rowX + 30, row1Y, rowH);
+        drawLabel("SFX", rowX + 30, row1Y, rowH);
+        drawToggle(sfxEnabled, rowX + rowW - 30, row1Y, rowH);
+
+        // Row 2: Shared music / sound-effect volume.
+        int row2Y = row1Y + 90;
+        drawRow(rowX, row2Y, rowW, rowH, menuIndex == 2);
+        drawLabel("Volume", rowX + 30, row2Y, rowH);
         drawBar(rowX + rowW - 30 - barFrame.getWidth() * S,
-                row1Y + (rowH - barFrame.getHeight() * S) / 2,
+                row2Y + (rowH - barFrame.getHeight() * S) / 2,
                 volume / 10.0, barFill);
 
-        // Row 2: Back (button)
-        int btnW = 300, btnH = 78;
-        drawButton("Back", (gp.screenWidth - btnW) / 2, row1Y + 120, btnW, btnH, menuIndex == 2);
+        // Row 3: Back.
+        int btnW = 300, btnH = 72;
+        drawButton("Back", (gp.screenWidth - btnW) / 2, row2Y + 95, btnW, btnH, menuIndex == 3);
 
-        drawHint("A/D: change     Enter or J: select     Esc: back");
+        drawHint("A/D: change     Enter or J: toggle     Esc: back");
+    }
+
+    private void drawToggle(boolean enabled, int rightX, int rowY, int rowH) {
+        BufferedImage image = enabled ? toggleOn : toggleOff;
+        if (image != null) {
+            int tw = image.getWidth() * S, th = image.getHeight() * S;
+            g2.drawImage(image, rightX - tw, rowY + (rowH - th) / 2, tw, th, null);
+        }
     }
 
     private void drawCredits() {
@@ -269,7 +285,8 @@ public class UI {
             g2.setFont(fontMid);
             g2.drawString(sel.name, boxX + 20, boxY + 35);
             g2.setFont(fontSmall);
-            drawWrapped(sel.description, boxX + 20, boxY + 60, boxW - 40, 16);
+            g2.drawString("Category: " + sel.category.name().replace('_', ' '), boxX + 20, boxY + 57);
+            drawWrapped(sel.description, boxX + 20, boxY + 78, boxW - 40, 16);
         }
 
         // Feedback line + controls

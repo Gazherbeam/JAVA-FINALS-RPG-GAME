@@ -19,12 +19,15 @@ public class player extends entity {
     boolean moving = false;
     boolean attacking = false;
     boolean attackLatch = false;   // one attack per Z press
+    int attackBufferTimer = 0;     // a Z press is remembered this many ticks (so Z just before X still swings in the dash)
+    static final int ATTACK_BUFFER_TICKS = 8;
 
     // ----- Attack settings -----
     int attackTicks = 0;                    // how long the current swing has lasted
     static final int ATTACK_HIT_TICK = 8;   // the swing damages at this tick (about when the blade is out)
-    public int attackDamage = 10;
-    public double attackKnockback = 9;
+    public int attackDamage = 40;          // same as the C attack (BIG_SWING_DAMAGE)
+    public double attackKnockback = 18;    // same as the C attack (BIG_SWING_KNOCKBACK)
+    int attackCooldownTimer = 0;           // Z uses the same cooldown as C (BIG_SWING_COOLDOWN)
 
     // ----- Dash settings (press X) -----
     public static final int DASH_TICKS = 10;                       // how long a dash lasts (10 ticks = 0.17 s)
@@ -170,6 +173,7 @@ public class player extends entity {
         dashCooldownTimer = 0;
         bigSwinging = false;
         bigSwingCooldownTimer = 0;
+        attackCooldownTimer = 0;
         ghosts.clear();
         kbTimer = 0;
         invincibleTimer = 60;
@@ -198,12 +202,15 @@ public class player extends entity {
         ghosts.tick();                                   // after-images keep fading even after the dash
         if (dashCooldownTimer > 0) dashCooldownTimer--;
         if (bigSwingCooldownTimer > 0) bigSwingCooldownTimer--;
+        if (attackBufferTimer > 0) attackBufferTimer--;
+        if (attackCooldownTimer > 0) attackCooldownTimer--;
         slashFx.tick();
 
         // Hit-stun: while being knocked back, the player can't act
         if (kbTimer > 0) {
             attacking = false;
             bigSwinging = false;
+            attackBufferTimer = 0;
             updateKnockback(gp);
             updateCamera();
             return;
@@ -240,18 +247,26 @@ public class player extends entity {
             bigSwingLatch = false;
         }
 
-        if (dashing) {
-            updateDash();
-            updateCamera();
-            return;   // no walking or attacking mid-dash
-        }
-
-        // ----- ATTACK -----
-        if (KeyH.attackPressed && !attacking && !attackLatch) {
+        // ----- ATTACK (Z) -----
+        // Allowed during a dash too: the swing starts right away and keeps going after the dash.
+        if (KeyH.attackPressed && !attackLatch) attackBufferTimer = ATTACK_BUFFER_TICKS;
+        if (KeyH.attackPressed && !attacking && !attackLatch && attackCooldownTimer <= 0) {
             attackLatch = true;
             startAttack(false);
         }
         if (!KeyH.attackPressed) attackLatch = false;
+
+        // Z pressed just before X: the dash cancelled that swing, so swing again inside the dash
+        if (dashing && !attacking && attackBufferTimer > 0 && attackCooldownTimer <= 0) {
+            attackBufferTimer = 0;
+            startAttack(false);
+        }
+
+        if (dashing) {
+            updateDash();
+            updateCamera();
+            return;   // no walking mid-dash (a swing keeps running alongside it)
+        }
 
         if (attacking) {
             updateAttack();
@@ -332,9 +347,9 @@ public class player extends entity {
 
     private void updateDash() {
         moveBy(gp, dashDX * DASH_SPEED, dashDY * DASH_SPEED);
-        if (bigSwinging) {
+        if (attacking) {
             updateAttack();
-            if (!bigSwinging) {
+            if (!attacking) {
                 currentAnim = walkAnim();
                 currentAnim.reset();
             }
@@ -360,7 +375,7 @@ public class player extends entity {
             case "right": currentAnim = attackRight; break;
         }
         currentAnim.reset();
-        if (bigSwing) slashFx.start();
+        if (!bigSwing) slashFx.start();   // the Slash Effect plays on Z only (not on C)
     }
 
     private void updateAttack() {
@@ -375,13 +390,15 @@ public class player extends entity {
             if (bigSwinging) {
                 bigSwinging = false;
                 bigSwingCooldownTimer = BIG_SWING_COOLDOWN;
+            } else {
+                attackCooldownTimer = BIG_SWING_COOLDOWN;
             }
         }
     }
 
     // The sword swing: damages every enemy inside a box in front of the player.
     private void swing() {
-        swing(60, 56, attackDamage, attackKnockback);
+        swing(BIG_SWING_REACH, BIG_SWING_WIDTH, attackDamage, attackKnockback);
     }
 
     private void bigSwing() {

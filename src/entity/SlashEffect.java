@@ -22,7 +22,7 @@ public class SlashEffect {
     private static final String SHEET = "/particles/original_slash_sprites_48x48.png";
     private static final int  CELL        = 48;    // size of one frame in the PNG
     private static final int  FRAME_COUNT = 9;     // frames 0 to 8
-    private static final long FRAME_MS    = 60;    // time per frame (lower = faster)
+    private static final long FRAME_MS    = 30;    // time per frame (lower = faster)
     private static final int  SCALE       = 3;     // base size: 48 px -> 144 px on screen
 
     // true  = the crescent turns to match the facing direction

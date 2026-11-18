@@ -4,7 +4,6 @@ import main.GamePanel;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -30,7 +29,7 @@ public class enemy extends entity {
     int detectRadius, loseRadius, attackRange, keepDistance;   // pixels
     int attackCooldown, windup;                                 // ticks
     boolean ranged = false;
-    public int xpReward = 10;                                   // used by the level system (Phase 4)
+    public int xpReward = 10;                                   // EXP given to the player on death (set per type in configure)
     Color tint = Color.WHITE;
 
     // ----- AI timers -----
@@ -254,7 +253,12 @@ public class enemy extends entity {
         if (state == State.DEAD) { deathTimer--; return; }
 
         tickCombat();
-        if (isDead()) { state = State.DEAD; deathTimer = 40; return; }
+        if (isDead()) {
+            state = State.DEAD;
+            deathTimer = 40;
+            gp.progression.awardExperience(xpReward, gp);   // runs once: DEAD returns early above
+            return;
+        }
 
         int startX = x, startY = y;
 

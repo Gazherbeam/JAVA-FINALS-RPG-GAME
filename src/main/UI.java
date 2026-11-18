@@ -149,8 +149,12 @@ public class UI {
 
         g2.setFont(fontSmall);
         g2.setColor(Color.WHITE);
-        g2.drawString("LV " + gp.progression.level + "   EXP "
-                + gp.progression.experience + "/" + gp.progression.experienceToNext, 12, 62);
+        if (gp.progression.level >= PlayerProgression.MAX_LEVEL) {
+            g2.drawString("LV " + gp.progression.level + "   EXP MAX", 12, 62);
+        } else {
+            g2.drawString("LV " + gp.progression.level + "   EXP "
+                    + gp.progression.experience + "/" + gp.progression.experienceToNext, 12, 62);
+        }
 
         if (showFPS) {
             g2.setFont(fontSmall);

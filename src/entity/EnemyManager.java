@@ -25,6 +25,9 @@ public class EnemyManager {
         enemies.clear();
         projectiles.clear();
         spawn("dummy", 14, 10);
+        spawn("melee", 10, 14);    // 10 EXP
+        spawn("fast", 6, 10);      // 12 EXP
+        spawn("ranged", 10, 6);    // 15 EXP
 
 
 

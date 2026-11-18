@@ -11,7 +11,8 @@ import javax.swing.JPanel;
 
 public class GamePanel extends JPanel implements Runnable {
 
-    // ===== SCREEN SETTINGS (unchanged) =====
+    // ===== SCREEN SETTING
+    // S (unchanged) =====
     final int originalTileSize = 16;
     final int scale = 3;
 

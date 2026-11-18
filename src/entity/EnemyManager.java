@@ -28,7 +28,8 @@ public class EnemyManager {
         spawn("melee", 10, 14);    // 10 EXP
         spawn("fast", 6, 10);      // 12 EXP
         spawn("ranged", 10, 6);    // 15 EXP
-
+        spawn("ranged", 15,10);
+        spawn("shooter", 16,10);
 
 
         System.out.println("Enemies spawned: " + enemies.size());

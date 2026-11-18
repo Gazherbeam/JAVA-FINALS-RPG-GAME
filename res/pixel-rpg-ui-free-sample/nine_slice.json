@@ -1,0 +1,241 @@
+{
+ "_readme": "Margins are in ART pixels of the 1x files, ordered left, top, right, bottom. State files of interactive pieces are padded by 1 transparent px on every side (room for the focus ring and the pressed drop), so add 1 to each margin when you slice a state file: texture_margins_ltrb. 2x and 4x files are exact nearest-neighbour scales: multiply the margins by 2 or 4. mode tile = repeat the middle (plank panels).",
+ "pieces": {
+  "bar_frame": {
+   "art_size_wh": [
+    86,
+    19
+   ],
+   "margins_ltrb": [
+    8,
+    0,
+    8,
+    0
+   ],
+   "type": "horizontal 3-slice",
+   "stretch_axis": "horizontal",
+   "fill_mode": "stretch",
+   "note": "cavity for trough and fill: x 10..77 (67 px), y 5..12 at native width",
+   "folder": "bars"
+  },
+  "btn_square": {
+   "art_size_wh": [
+    35,
+    34
+   ],
+   "margins_ltrb": [
+    8,
+    8,
+    8,
+    9
+   ],
+   "type": "9-slice",
+   "stretch_axis": "both",
+   "fill_mode": "stretch",
+   "note": "same margins as btn_wide",
+   "state_files_padded_by_1px": true,
+   "texture_margins_ltrb_in_state_files": [
+    9,
+    9,
+    9,
+    10
+   ],
+   "states": [
+    "disabled",
+    "focus",
+    "hover",
+    "normal",
+    "pressed"
+   ],
+   "folder": "controls"
+  },
+  "btn_wide": {
+   "art_size_wh": [
+    71,
+    34
+   ],
+   "margins_ltrb": [
+    8,
+    8,
+    8,
+    9
+   ],
+   "type": "9-slice",
+   "stretch_axis": "both",
+   "fill_mode": "stretch",
+   "note": "flat centre; bottom margin includes the 2 px shadow row",
+   "state_files_padded_by_1px": true,
+   "texture_margins_ltrb_in_state_files": [
+    9,
+    9,
+    9,
+    10
+   ],
+   "states": [
+    "disabled",
+    "focus",
+    "hover",
+    "normal",
+    "pressed"
+   ],
+   "folder": "controls"
+  },
+  "panel_window": {
+   "art_size_wh": [
+    85,
+    75
+   ],
+   "margins_ltrb": [
+    11,
+    11,
+    11,
+    11
+   ],
+   "type": "9-slice",
+   "stretch_axis": "both",
+   "fill_mode": "stretch",
+   "note": "cream centre is flat",
+   "folder": "panels"
+  },
+  "plate_title": {
+   "art_size_wh": [
+    74,
+    18
+   ],
+   "margins_ltrb": [
+    9,
+    0,
+    9,
+    0
+   ],
+   "type": "horizontal 3-slice",
+   "stretch_axis": "horizontal",
+   "fill_mode": "stretch",
+   "note": "",
+   "folder": "panels"
+  },
+  "ribbon_long": {
+   "art_size_wh": [
+    84,
+    16
+   ],
+   "margins_ltrb": [
+    15,
+    0,
+    15,
+    0
+   ],
+   "type": "horizontal 3-slice",
+   "stretch_axis": "horizontal",
+   "fill_mode": "stretch",
+   "note": "forked ends and brass bands stay whole",
+   "folder": "panels"
+  },
+  "slot": {
+   "art_size_wh": [
+    33,
+    31
+   ],
+   "margins_ltrb": [
+    7,
+    7,
+    7,
+    7
+   ],
+   "type": "9-slice",
+   "stretch_axis": "both",
+   "fill_mode": "stretch",
+   "note": "interior is transparent; draw the icon on top",
+   "state_files_padded_by_1px": true,
+   "texture_margins_ltrb_in_state_files": [
+    8,
+    8,
+    8,
+    8
+   ],
+   "states": [
+    "disabled",
+    "focus",
+    "normal",
+    "selected"
+   ],
+   "folder": "misc"
+  },
+  "star_full": {
+   "art_size_wh": [
+    38,
+    39
+   ],
+   "type": "fixed-size",
+   "stretch_axis": "none",
+   "note": "fixed size",
+   "folder": "misc"
+  },
+  "toggle_off": {
+   "art_size_wh": [
+    42,
+    19
+   ],
+   "type": "fixed-size",
+   "stretch_axis": "none",
+   "note": "fixed size",
+   "folder": "controls",
+   "state_files_padded_by_1px": true,
+   "states": [
+    "disabled",
+    "focus",
+    "hover",
+    "normal",
+    "pressed"
+   ]
+  },
+  "toggle_on": {
+   "art_size_wh": [
+    42,
+    19
+   ],
+   "type": "fixed-size",
+   "stretch_axis": "none",
+   "note": "fixed size",
+   "folder": "controls",
+   "state_files_padded_by_1px": true,
+   "states": [
+    "disabled",
+    "focus",
+    "hover",
+    "normal",
+    "pressed"
+   ]
+  },
+  "bar_trough": {
+   "art_size_wh": [
+    67,
+    8
+   ],
+   "type": "fixed-size",
+   "stretch_axis": "none",
+   "note": "flat trough that goes under the fill inside the bar_frame cavity",
+   "folder": "bars"
+  },
+  "bar_fill_red": {
+   "art_size_wh": [
+    67,
+    8
+   ],
+   "type": "fill strip",
+   "stretch_axis": "none",
+   "note": "crop from the left to show a percentage (levels/ has 0, 25, 50, 75, 100 ready-made); the cavity starts 10 px from the left and 5 px from the top of bar_frame",
+   "folder": "bars"
+  },
+  "bar_fill_gold": {
+   "art_size_wh": [
+    67,
+    8
+   ],
+   "type": "fill strip",
+   "stretch_axis": "none",
+   "note": "crop from the left to show a percentage (levels/ has 0, 25, 50, 75, 100 ready-made); the cavity starts 10 px from the left and 5 px from the top of bar_frame",
+   "folder": "bars"
+  }
+ }
+}

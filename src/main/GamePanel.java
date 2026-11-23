@@ -4,8 +4,12 @@ import entity.EnemyManager;
 import entity.player;
 import tile.TileManager;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import javax.swing.AbstractAction;
+import javax.swing.InputMap;
+import javax.swing.ActionMap;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 
 
@@ -51,6 +55,9 @@ public class GamePanel extends JPanel implements Runnable {
     public TileManager tileM = new TileManager(this);
     public UI ui = new UI(this);
     public final Music music = new Music();
+    public final SoundEffect soundEffects = new SoundEffect();
+    // Compatibility alias for code that uses the singular field name.
+    public final SoundEffect soundEffect = soundEffects;
     public Inventory inventory = new Inventory();
     public KeyHandler keyH = new KeyHandler();
     public player Player = new player(this, keyH);
@@ -61,14 +68,15 @@ public class GamePanel extends JPanel implements Runnable {
         Player.slashFx.setScale(4); // COPILOT EDIT
         music.setEnabled(ui.sfxEnabled);
         music.setVolume(ui.volume / 10.0f);
+        soundEffects.setEnabled(ui.sfxEnabled);
+        soundEffects.setVolume(ui.volume / 10.0f);
         // Keep the existing area soundtrack playing.
         music.play("Battle01.wav");
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setBackground(Color.black);
         this.setDoubleBuffered(true);
-        this.addKeyListener(keyH);           // existing handler: player movement
-        this.addKeyListener(new MenuKeys()); // new handler: menus and state changes
         this.setFocusable(true);
+        installKeyboardBindings();
 
         // Starter items exercise the inventory's category, stacking, and use-effect support.
         inventory.add(new Item("Potion", "Restores 30 HP.", true, null,
@@ -203,26 +211,82 @@ public class GamePanel extends JPanel implements Runnable {
         enemyM.projectiles.clear();
     }
 
-    // ===== MENU INPUT =====
-    // KeyHandler is left alone. This second listener only deals with menus and state changes.
+    // ===== KEYBOARD INPUT =====
+    // Window-level bindings receive input even when the panel itself is not the
+    // focused component. Arrow keys navigate menus and move the player in playState.
+    private void installKeyboardBindings() {
+        InputMap input = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actions = getActionMap();
 
-    private class MenuKeys extends KeyAdapter {
-        @Override
-        public void keyPressed(KeyEvent e) {
-            int k = e.getKeyCode();
-            boolean up      = k == KeyEvent.VK_W || k == KeyEvent.VK_UP;
-            boolean down    = k == KeyEvent.VK_S || k == KeyEvent.VK_DOWN;
-            boolean left    = k == KeyEvent.VK_A || k == KeyEvent.VK_LEFT;
-            boolean right   = k == KeyEvent.VK_D || k == KeyEvent.VK_RIGHT;
-            boolean confirm = k == KeyEvent.VK_ENTER || k == KeyEvent.VK_J;
-            boolean back    = k == KeyEvent.VK_ESCAPE;
+        bindKey(input, actions, KeyEvent.VK_UP, "up", true);
+        bindKey(input, actions, KeyEvent.VK_DOWN, "down", true);
+        bindKey(input, actions, KeyEvent.VK_LEFT, "left", true);
+        bindKey(input, actions, KeyEvent.VK_RIGHT, "right", true);
+        bindKey(input, actions, KeyEvent.VK_Z, "attack", true);
+        bindKey(input, actions, KeyEvent.VK_X, "dash", true);
+        bindKey(input, actions, KeyEvent.VK_C, "bigSwing", true);
 
-            if (gameState == titleState)         handleTitle(up, down, confirm);
-            else if (gameState == settingsState) handleSettings(up, down, left, right, confirm, back);
-            else if (gameState == creditsState)  handleCredits(confirm, back);
-            else if (gameState == playState)     handlePlay(k, back);
-            else if (gameState == battleState)   handleBattle(up, down, left, right, confirm, back);
-            else if (gameState == inventoryState) handleInventory(k, up, down, left, right, confirm, back);
+        bindMenuKey(input, actions, KeyEvent.VK_ENTER, "confirm");
+        bindMenuKey(input, actions, KeyEvent.VK_ESCAPE, "back");
+        bindMenuKey(input, actions, KeyEvent.VK_I, "inventory");
+        bindMenuKey(input, actions, KeyEvent.VK_H, "testDamage");
+        bindMenuKey(input, actions, KeyEvent.VK_G, "testHeal");
+        bindMenuKey(input, actions, KeyEvent.VK_J, "confirmJ");
+    }
+
+    private void bindKey(InputMap input, ActionMap actions, int keyCode,
+                         String name, boolean routeToMenus) {
+        String pressed = name + "Pressed";
+        String released = name + "Released";
+        input.put(javax.swing.KeyStroke.getKeyStroke(keyCode, 0, false), pressed);
+        input.put(javax.swing.KeyStroke.getKeyStroke(keyCode, 0, true), released);
+
+        actions.put(pressed, new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                if (gameState == playState) {
+                    keyH.keyPressed(keyCode);
+                } else if (routeToMenus) {
+                    handleMenuKey(keyCode);
+                }
+            }
+        });
+        actions.put(released, new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                keyH.keyReleased(keyCode);
+            }
+        });
+    }
+
+    private void bindMenuKey(InputMap input, ActionMap actions, int keyCode, String name) {
+        String actionName = "menu_" + name;
+        input.put(javax.swing.KeyStroke.getKeyStroke(keyCode, 0, false), actionName);
+        actions.put(actionName, new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                handleMenuKey(keyCode);
+            }
+        });
+    }
+
+    private void handleMenuKey(int keyCode) {
+        boolean up = keyCode == KeyEvent.VK_UP;
+        boolean down = keyCode == KeyEvent.VK_DOWN;
+        boolean left = keyCode == KeyEvent.VK_LEFT;
+        boolean right = keyCode == KeyEvent.VK_RIGHT;
+        boolean confirm = keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_J;
+        boolean back = keyCode == KeyEvent.VK_ESCAPE;
+
+        if (gameState == titleState) {
+            handleTitle(up, down, confirm);
+        } else if (gameState == settingsState) {
+            handleSettings(up, down, left, right, confirm, back);
+        } else if (gameState == creditsState) {
+            handleCredits(confirm, back);
+        } else if (gameState == playState) {
+            handlePlay(keyCode, back);
+        } else if (gameState == battleState) {
+            handleBattle(up, down, left, right, confirm, back);
+        } else if (gameState == inventoryState) {
+            handleInventory(keyCode, up, down, left, right, confirm, back);
         }
     }
 
@@ -255,12 +319,16 @@ public class GamePanel extends JPanel implements Runnable {
         if (ui.menuIndex == 1 && (left || right || confirm)) {
             ui.sfxEnabled = !ui.sfxEnabled;
             music.setEnabled(ui.sfxEnabled);
+            soundEffects.setEnabled(ui.sfxEnabled);
         }
         // Shared sound volume. The same value can be used by future sound effects.
         if (ui.menuIndex == 2) {
             if (left)  ui.volume = Math.max(0, ui.volume - 1);
             if (right) ui.volume = Math.min(10, ui.volume + 1);
-            if (left || right) music.setVolume(ui.volume / 10.0f);
+            if (left || right) {
+                music.setVolume(ui.volume / 10.0f);
+                soundEffects.setVolume(ui.volume / 10.0f);
+            }
         }
         if ((ui.menuIndex == 3 && confirm) || back) {
             gameState = titleState;
@@ -287,6 +355,8 @@ public class GamePanel extends JPanel implements Runnable {
         // I opens the inventory
         if (keyCode == KeyEvent.VK_I) {
             ui.invMessage = "";
+            ui.inventoryDetails = false;
+            ui.menuCategory = 2;
             gameState = inventoryState;
         }
         // TEMPORARY: press B to open the battle screen so you can see it
@@ -295,6 +365,21 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void handleInventory(int keyCode, boolean up, boolean down, boolean left, boolean right,
                                  boolean confirm, boolean back) {
+        if (!ui.inventoryDetails) {
+            if (up) ui.menuCategory = (ui.menuCategory + 8) % 9;
+            if (down) ui.menuCategory = (ui.menuCategory + 1) % 9;
+            if (confirm && ui.menuCategory == 2) {
+                ui.inventoryDetails = true;
+                ui.invIndex = 0;
+                ui.invMessage = "";
+            }
+            if (back || keyCode == KeyEvent.VK_I) {
+                gameState = playState;
+                ui.invMessage = "";
+            }
+            return;
+        }
+
         int cols = Inventory.COLS;
 
         // move the cursor around the grid
@@ -307,7 +392,7 @@ public class GamePanel extends JPanel implements Runnable {
         // Esc or I closes it
         if (back || keyCode == KeyEvent.VK_I) {
             ui.invMessage = "";
-            gameState = playState;
+            ui.inventoryDetails = false;
             return;
         }
 

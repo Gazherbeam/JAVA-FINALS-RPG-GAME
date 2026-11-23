@@ -49,6 +49,7 @@ public class PlayerProgression {
         }
         if (level >= MAX_LEVEL) experience = 0;   // nothing left to earn at the cap
         if (gained > 0) {
+            if (gp != null) gp.soundEffect.play("Level up Pickup (Rpg).wav");
             recalculateStats();
             if (gp != null && gp.Player != null) {
                 applyTo(gp);

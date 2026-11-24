@@ -197,6 +197,13 @@ public class player extends entity {
     // ===== UPDATE =====
 
     public void update() {
+        if (gp.dialogue != null && gp.dialogue.isActive()) {
+            moving = false;
+            currentAnim = idleAnim();
+            if (currentAnim != null) currentAnim.tick();
+            updateCamera();
+            return;
+        }
         if (isDead()) { respawn(); updateCamera(); return; }
 
         tickCombat();

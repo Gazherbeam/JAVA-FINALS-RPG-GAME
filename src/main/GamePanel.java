@@ -62,6 +62,7 @@ public class GamePanel extends JPanel implements Runnable {
     public KeyHandler keyH = new KeyHandler();
     public player Player = new player(this, keyH);
     public EnemyManager enemyM = new EnemyManager(this);
+    public final Dialogue dialogue = new Dialogue(this);
     Thread gameThread;
 
     public GamePanel() {
@@ -151,11 +152,13 @@ public class GamePanel extends JPanel implements Runnable {
         if (gameState == playState || gameState == inventoryState) {
             tileM.draw(g2);
             enemyM.draw(g2);
+            drawTestSign(g2);
             Player.draw(g2);
         }
 
         if (gameState == playState) {
             ui.drawPlayOverlay(g2);
+            dialogue.draw(g2);
         } else {
             ui.draw(g2);
         }
@@ -163,6 +166,34 @@ public class GamePanel extends JPanel implements Runnable {
         g2.dispose();
     }
 
+
+    // Temporary dialogue-test sign in RuinedTown, two tiles east of the player start.
+    private void drawTestSign(Graphics2D g2) {
+        if (!"/maps/RuinedTown.txt".equals(tileM.currentMapPath)) return;
+
+        int worldX = 12 * tileSize;
+        int worldY = 10 * tileSize;
+        int screenX = worldX - Player.camX;
+        int screenY = worldY - Player.camY;
+
+        g2.setColor(new Color(75, 45, 25));
+        g2.fillRect(screenX + 21, screenY + 30, 6, 28);
+        g2.setColor(new Color(115, 75, 38));
+        g2.fillRect(screenX + 3, screenY + 3, 42, 31);
+        g2.setColor(new Color(210, 175, 105));
+        g2.drawRect(screenX + 3, screenY + 3, 42, 31);
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 10));
+        g2.drawString("READ", screenX + 10, screenY + 22);
+
+        int dx = Player.centerX() - (worldX + tileSize / 2);
+        int dy = Player.centerY() - (worldY + tileSize / 2);
+        if (dx * dx + dy * dy <= (tileSize * 2) * (tileSize * 2)) {
+            g2.setFont(new Font("Arial", Font.BOLD, 12));
+            g2.setColor(Color.WHITE);
+            g2.drawString("E: Read sign", screenX - 7, screenY - 7);
+        }
+    }
 
     // ===== MAP TRANSITIONS =====
     // The exits are on the left-center edge of Landfill and the right-center
@@ -232,6 +263,7 @@ public class GamePanel extends JPanel implements Runnable {
         bindMenuKey(input, actions, KeyEvent.VK_H, "testDamage");
         bindMenuKey(input, actions, KeyEvent.VK_G, "testHeal");
         bindMenuKey(input, actions, KeyEvent.VK_J, "confirmJ");
+        bindMenuKey(input, actions, KeyEvent.VK_E, "interact");
     }
 
     private void bindKey(InputMap input, ActionMap actions, int keyCode,
@@ -344,6 +376,21 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void handlePlay(int keyCode, boolean back) {
+        if (keyCode == KeyEvent.VK_E) {
+            if (dialogue.isActive()) {
+                dialogue.advance();
+            } else if ("/maps/RuinedTown.txt".equals(tileM.currentMapPath)) {
+                int signX = 12 * tileSize + tileSize / 2;
+                int signY = 10 * tileSize + tileSize / 2;
+                int dx = Player.centerX() - signX;
+                int dy = Player.centerY() - signY;
+                if (dx * dx + dy * dy <= (tileSize * 2) * (tileSize * 2)) {
+                    dialogue.start(Conversation.testSign());
+                }
+            }
+            return;
+        }
+        if (dialogue.isActive()) return;
         if (back) {
             gameState = titleState;
             ui.menuIndex = 0;

@@ -16,6 +16,12 @@ public class Inventory {
         return inBounds(slot) ? items[slot] : null;
     }
 
+    public int getUsedSlots() {
+        int used = 0;
+        for (Item item : items) if (item != null) used++;
+        return used;
+    }
+
     public int getCount(int slot) {
         return inBounds(slot) ? counts[slot] : 0;
     }

@@ -334,6 +334,7 @@ public class enemy extends entity {
     }
 
     private void startAttack() {
+        gp.soundEffects.play("Monster roar (Rpg).wav");
         state = State.ATTACK;
         windupTimer = windup;
         currentAnim = anims[2][dirIndex()];

@@ -154,6 +154,7 @@ public class player extends entity {
     }
 
     public boolean isDashing() { return dashing; }
+    public boolean isMoving() { return moving; }
 
     // True when a dash could be started right now (enemies peek at this to read you)
     public boolean dashReady() { return !dashing && !bigSwinging && dashCooldownTimer <= 0 && kbTimer <= 0; }
@@ -333,6 +334,7 @@ public class player extends entity {
         faceInput(dx, dy);
 
         dashing = true;
+        gp.soundEffect.play("Invisibility Smoke Sound.wav");
         dashTimer = DASH_TICKS;
         attacking = false;
         moving = true;
@@ -375,7 +377,10 @@ public class player extends entity {
             case "right": currentAnim = attackRight; break;
         }
         currentAnim.reset();
-        if (!bigSwing) slashFx.start();   // the Slash Effect plays on Z only (not on C)
+        if (!bigSwing) {
+            slashFx.start();   // the Slash Effect plays on Z only (not on C)
+            gp.soundEffects.play("Sword Slash (Rpg).wav");
+        }
     }
 
     private void updateAttack() {

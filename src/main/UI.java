@@ -27,6 +27,9 @@ public class UI {
 
     // ----- Inventory menu state (changed by GamePanel) -----
     public int invIndex = 0;          // which slot the cursor is on
+    public int menuCategory = 2;      // Inventory is selected when the menu opens
+    public boolean inventoryDetails = false;
+    private final String[] menuCategories = {"World Map", "Journal", "Inventory", "Healing", "Equipment", "Jobs", "Skills", "Status", "Miscellaneous"};
     public String invMessage = "";    // short feedback line ("Used Potion.")
     private final Map<String, BufferedImage> iconCache = new HashMap<>();
 
@@ -39,6 +42,7 @@ public class UI {
 
     // ----- Background -----
     BufferedImage bgImage;
+    BufferedImage menuBackground;
     static final String BG_PATH = "/fantasy-backgrounds-free-v1.0.1/fantasy-backgrounds-free/320x160/harbor_day.png";
     static final int PAN_SPEED = 30;   // pixels per second
     static final int DIM_ALPHA = 110;   // 0 = no darkening, 255 = black. Lower is lighter.
@@ -69,6 +73,7 @@ public class UI {
 
 
         bgImage = loadAbsolute(BG_PATH);
+        menuBackground = loadResource("/menu_background.png");
 
         loadFont("fonts/PressStart2P-Regular.ttf");
     }
@@ -128,9 +133,9 @@ public class UI {
 
         // Menus that open on top of the game show the frozen, darkened world.
         // The other screens (title, settings, credits) use the panning PNG.
-        boolean overWorld = gp.gameState == gp.inventoryState;
-        if (overWorld) drawWorldBackdrop();
-        else           drawBackground();
+        boolean overWorld = false;
+        if (gp.gameState == gp.inventoryState) drawMenuBackdrop();
+        else drawBackground();
 
         if (gp.gameState == gp.titleState)     drawTitle();
         if (gp.gameState == gp.settingsState)  drawSettings();
@@ -249,56 +254,154 @@ public class UI {
         drawHint("Enter, J or Esc: back");
     }
 
-    // Item grid on top, description box underneath. Reads gp.inventory, never changes it.
+    // Octopath-inspired in-game menu: static illustrated centre, category rail, party panel.
     private void drawInventory() {
-        drawRibbon("INVENTORY", 30);
+        if (inventoryDetails) { drawInventoryDetails(); return; }
 
-        int panelW = 640, panelH = 520;
-        int panelX = (gp.screenWidth - panelW) / 2, panelY = 120;
-        nineSlice(panel, 11, 11, 11, 11, panelX, panelY, panelW, panelH);
+        // Header
+        g2.setFont(fontBig);
+        g2.setColor(new Color(58, 39, 23));
+        g2.drawString("MENU", 28, 43);
+        g2.setFont(fontSmall);
+        g2.drawString("ADVENTURE RECORD", 30, 62);
 
+        // Left navigation panel
+        int lx = 18, ly = 92, lw = 208, rowH = 58;
+        drawOrnatePanel(lx, ly, lw, 9 * rowH + 18);
+        for (int i = 0; i < menuCategories.length; i++) {
+            int y = ly + 10 + i * rowH;
+            if (i == menuCategory) {
+                g2.setColor(new Color(92, 62, 34, 220));
+                g2.fillRoundRect(lx + 8, y + 3, lw - 16, rowH - 6, 10, 10);
+                g2.setColor(new Color(244, 210, 112));
+                g2.setStroke(new BasicStroke(2));
+                g2.drawRoundRect(lx + 8, y + 3, lw - 16, rowH - 6, 10, 10);
+            }
+            g2.setFont(fontMid);
+            g2.setColor(i == menuCategory ? new Color(255, 239, 190) : inkDark);
+            g2.drawString((i == menuCategory ? "▶ " : "   ") + menuCategories[i], lx + 19, y + 36);
+        }
+
+        // Centre feature panel. The illustration remains static; only the selected category changes.
+        int cx = 240, cy = 92, cw = 300, ch = 544;
+        drawOrnatePanel(cx, cy, cw, ch);
+        g2.setFont(fontBig);
+        g2.setColor(inkDark);
+        drawCentered(menuCategories[menuCategory].toUpperCase(), cy + 45, inkDark, cx + cw / 2);
+        if (menuCategory == 2) {
+            g2.setFont(fontMid);
+            drawCentered("Your collected items", cy + 88, inkDark, cx + cw / 2);
+            drawCentered(gp.inventory.getUsedSlots() + " / " + Inventory.SIZE + " slots occupied", cy + 120, inkDark, cx + cw / 2);
+            drawCentered("Press ENTER to open", cy + ch - 35, inkDark, cx + cw / 2);
+        } else {
+            g2.setFont(fontMid);
+            String description = categoryDescription(menuCategory);
+            drawWrappedCentered(description, cx + 24, cy + 390, cw - 48, 24);
+            g2.setFont(fontSmall);
+            drawCentered("More features will be added here", cy + ch - 35, inkDark, cx + cw / 2);
+        }
+
+        // Right party/status panel
+        int rx = 552, ry = 92, rw = 198, rh = 544;
+        drawOrnatePanel(rx, ry, rw, rh);
+        g2.setFont(fontMid);
+        drawCentered("PARTY", ry + 38, inkDark, rx + rw / 2);
+        g2.setColor(new Color(255,255,255,100));
+        g2.drawLine(rx + 15, ry + 52, rx + rw - 15, ry + 52);
+        // Current playable character. A portrait placeholder keeps this panel ready for party sprites.
+        g2.setColor(new Color(112, 83, 51));
+        g2.fillOval(rx + 68, ry + 76, 62, 62);
+        g2.setColor(new Color(244, 224, 177));
+        g2.setFont(fontBig);
+        drawCentered("H", ry + 119, new Color(255,245,218), rx + rw / 2);
+        g2.setFont(fontMid);
+        drawCentered("Hero", ry + 170, inkDark, rx + rw / 2);
+        g2.setFont(fontSmall);
+        drawCentered("Lv. " + gp.progression.level, ry + 197, inkDark, rx + rw / 2);
+        drawStatBar("HP", gp.playerHP, gp.playerMaxHP, rx + 18, ry + 225, rw - 36, new Color(93, 145, 76));
+        drawStatBar("MP", gp.playerMP, gp.playerMaxMP, rx + 18, ry + 280, rw - 36, new Color(74, 133, 184));
+        g2.setFont(fontSmall);
+        drawCentered("EXP", ry + 350, inkDark, rx + rw / 2);
+        drawCentered(gp.progression.level >= PlayerProgression.MAX_LEVEL ? "MAX" : gp.progression.experience + " / " + gp.progression.experienceToNext, ry + 375, inkDark, rx + rw / 2);
+
+        drawHint("W/S: Select     ENTER: Confirm     ESC / I: Return to game");
+    }
+
+    private void drawInventoryDetails() {
+        drawRibbon("INVENTORY", 24);
+        int panelW = 690, panelH = 560;
+        int panelX = (gp.screenWidth - panelW) / 2, panelY = 110;
+        drawOrnatePanel(panelX, panelY, panelW, panelH);
         int cols = Inventory.COLS, rows = Inventory.ROWS;
-        int slot = 80, gap = 12;
+        int slot = 76, gap = 10;
         int gridW = cols * slot + (cols - 1) * gap;
-        int gridX = panelX + (panelW - gridW) / 2, gridY = panelY + 30;
-
-        // Slots
+        int gridX = panelX + (panelW - gridW) / 2, gridY = panelY + 28;
         for (int i = 0; i < Inventory.SIZE; i++) {
             int x = gridX + (i % cols) * (slot + gap);
             int y = gridY + (i / cols) * (slot + gap);
             nineSlice(i == invIndex ? slotSelected : slotNormal, 8, 8, 8, 8, x, y, slot, slot);
-
             Item item = gp.inventory.getItem(i);
-            if (item != null) {
-                drawItem(item, gp.inventory.getCount(i), x, y, slot);
-            }
+            if (item != null) drawItem(item, gp.inventory.getCount(i), x, y, slot);
         }
-
-        // Description box for the highlighted slot
         int boxX = panelX + 30, boxW = panelW - 60;
-        int boxY = gridY + rows * (slot + gap) - gap + 20;
-        int boxH = panelY + panelH - 20 - boxY;
+        int boxY = gridY + rows * (slot + gap) + 8;
+        int boxH = panelY + panelH - 22 - boxY;
         drawRow(boxX, boxY, boxW, boxH, false);
-
         Item sel = gp.inventory.getItem(invIndex);
         g2.setColor(inkDark);
-        if (sel == null) {
-            g2.setFont(fontMid);
-            g2.drawString("Empty", boxX + 20, boxY + 40);
-        } else {
-            g2.setFont(fontMid);
-            g2.drawString(sel.name, boxX + 20, boxY + 35);
+        g2.setFont(fontMid);
+        g2.drawString(sel == null ? "Empty slot" : sel.name, boxX + 18, boxY + 31);
+        if (sel != null) {
             g2.setFont(fontSmall);
-            g2.drawString("Category: " + sel.category.name().replace('_', ' '), boxX + 20, boxY + 57);
-            drawWrapped(sel.description, boxX + 20, boxY + 78, boxW - 40, 16);
+            g2.drawString("Category: " + sel.category.name().replace('_', ' '), boxX + 18, boxY + 52);
+            drawWrapped(sel.description, boxX + 18, boxY + 72, boxW - 36, 16);
         }
+        if (!invMessage.isEmpty()) { g2.setFont(fontSmall); drawCentered(invMessage, panelY + panelH + 20, inkLight); }
+        drawHint("W/A/S/D: Move     ENTER: Use     ESC: Back to menu");
+    }
 
-        // Feedback line + controls
-        if (!invMessage.isEmpty()) {
-            g2.setFont(fontSmall);
-            drawCentered(invMessage, panelY + panelH + 30, inkLight);
+    private String categoryDescription(int index) {
+        switch (index) {
+            case 0: return "Review the lands you have explored and the roads still ahead.";
+            case 1: return "Keep track of your journey, discoveries, and important events.";
+            case 3: return "View restorative items and recovery supplies.";
+            case 4: return "Manage weapons, armor, and the gear you carry.";
+            case 5: return "Review available disciplines and combat roles.";
+            case 6: return "Inspect learned abilities and techniques.";
+            case 7: return "Review your character's attributes and progression.";
+            default: return "Other useful records and adventure options.";
         }
-        drawHint("W/A/S/D: move     Enter or J: use     Esc or I: close");
+    }
+
+    private void drawOrnatePanel(int x, int y, int w, int h) {
+        g2.setColor(new Color(235, 211, 164, 218));
+        g2.fillRoundRect(x, y, w, h, 18, 18);
+        g2.setColor(new Color(92, 61, 34, 230));
+        g2.setStroke(new BasicStroke(3));
+        g2.drawRoundRect(x + 2, y + 2, w - 4, h - 4, 18, 18);
+        g2.setColor(new Color(255, 245, 211, 150));
+        g2.setStroke(new BasicStroke(1));
+        g2.drawRoundRect(x + 8, y + 8, w - 16, h - 16, 12, 12);
+    }
+
+    private void drawStatBar(String label, int value, int max, int x, int y, int w, Color fill) {
+        g2.setFont(fontSmall); g2.setColor(inkDark);
+        g2.drawString(label + "  " + value + "/" + max, x, y);
+        g2.setColor(new Color(70, 52, 35)); g2.fillRoundRect(x, y + 8, w, 12, 6, 6);
+        g2.setColor(fill);
+        int amount = max <= 0 ? 0 : (int)(w * Math.max(0, Math.min(1, value / (double)max)));
+        g2.fillRoundRect(x, y + 8, amount, 12, 6, 6);
+    }
+
+    private void drawWrappedCentered(String text, int x, int y, int width, int lineHeight) {
+        FontMetrics fm = g2.getFontMetrics(); String line = "";
+        for (String word : text.split(" ")) {
+            String test = line.isEmpty() ? word : line + " " + word;
+            if (fm.stringWidth(test) > width && !line.isEmpty()) {
+                drawCentered(test = line, y, inkDark, x + width / 2); y += lineHeight; line = word;
+            } else line = test;
+        }
+        if (!line.isEmpty()) drawCentered(line, y, inkDark, x + width / 2);
     }
 
     // One item inside a slot: icon (or first letter if there's no icon) + stack count.
@@ -429,6 +532,18 @@ public class UI {
                         ddx[col], ddy[row], ddx[col + 1], ddy[row + 1],
                         sx[col], sy[row], sx[col + 1], sy[row + 1], null);
             }
+        }
+    }
+
+    // Static illustrated parchment background for the in-game menu.
+    private void drawMenuBackdrop() {
+        if (menuBackground != null) {
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.drawImage(menuBackground, 0, 0, gp.screenWidth, gp.screenHeight, null);
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        } else {
+            g2.setColor(new Color(188, 151, 101));
+            g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
         }
     }
 

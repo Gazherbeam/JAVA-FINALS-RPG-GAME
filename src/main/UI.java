@@ -27,9 +27,10 @@ public class UI {
 
     // ----- Inventory menu state (changed by GamePanel) -----
     public int invIndex = 0;          // which slot the cursor is on
-    public int menuCategory = 2;      // Inventory is selected when the menu opens
+    public int menuCategory = 0;      // Inventory is selected when the menu opens
     public boolean inventoryDetails = false;
-    private final String[] menuCategories = {"World Map", "Journal", "Inventory", "Healing", "Equipment", "Jobs", "Skills", "Status", "Miscellaneous"};
+    public boolean categoryDetails = false;
+    private final String[] menuCategories = {"Inventory", "Spells", "Equipment", "Status", "System"};
     public String invMessage = "";    // short feedback line ("Used Potion.")
     private final Map<String, BufferedImage> iconCache = new HashMap<>();
 
@@ -151,6 +152,16 @@ public class UI {
 
         // HP bar, top left. Keep the existing HUD layout and add progression text below it.
         drawBar(12, 12, gp.playerMaxHP > 0 ? gp.playerHP / (double) gp.playerMaxHP : 0, barFillRed);
+        // MP bar, top right.
+        drawStatBar(
+                "MP",
+                gp.playerMP,
+                gp.playerMaxMP,
+                gp.screenWidth - 190,
+                12,
+                170,
+                new Color(70, 190, 105)
+        );
 
         g2.setFont(fontSmall);
         g2.setColor(Color.WHITE);
@@ -257,6 +268,7 @@ public class UI {
     // Octopath-inspired in-game menu: static illustrated centre, category rail, party panel.
     private void drawInventory() {
         if (inventoryDetails) { drawInventoryDetails(); return; }
+        if (categoryDetails) { drawCategoryDetails(); return; }
 
         // Header
         g2.setFont(fontBig);
@@ -267,7 +279,7 @@ public class UI {
 
         // Left navigation panel
         int lx = 18, ly = 92, lw = 208, rowH = 58;
-        drawOrnatePanel(lx, ly, lw, 9 * rowH + 18);
+        drawOrnatePanel(lx, ly, lw, menuCategories.length * rowH + 18);
         for (int i = 0; i < menuCategories.length; i++) {
             int y = ly + 10 + i * rowH;
             if (i == menuCategory) {
@@ -282,13 +294,13 @@ public class UI {
             g2.drawString((i == menuCategory ? "▶ " : "   ") + menuCategories[i], lx + 19, y + 36);
         }
 
-        // Centre feature panel. The illustration remains static; only the selected category changes.
+        // Centre feature panel previews the selected category.
         int cx = 240, cy = 92, cw = 300, ch = 544;
         drawOrnatePanel(cx, cy, cw, ch);
         g2.setFont(fontBig);
         g2.setColor(inkDark);
         drawCentered(menuCategories[menuCategory].toUpperCase(), cy + 45, inkDark, cx + cw / 2);
-        if (menuCategory == 2) {
+        if (menuCategory == 0) {
             g2.setFont(fontMid);
             drawCentered("Your collected items", cy + 88, inkDark, cx + cw / 2);
             drawCentered(gp.inventory.getUsedSlots() + " / " + Inventory.SIZE + " slots occupied", cy + 120, inkDark, cx + cw / 2);
@@ -308,21 +320,16 @@ public class UI {
         drawCentered("PARTY", ry + 38, inkDark, rx + rw / 2);
         g2.setColor(new Color(255,255,255,100));
         g2.drawLine(rx + 15, ry + 52, rx + rw - 15, ry + 52);
-        // Current playable character. A portrait placeholder keeps this panel ready for party sprites.
-        g2.setColor(new Color(112, 83, 51));
-        g2.fillOval(rx + 68, ry + 76, 62, 62);
-        g2.setColor(new Color(244, 224, 177));
-        g2.setFont(fontBig);
-        drawCentered("H", ry + 119, new Color(255,245,218), rx + rw / 2);
+        // Character portrait/icon removed. Keep the party information text-only.
         g2.setFont(fontMid);
-        drawCentered("Hero", ry + 170, inkDark, rx + rw / 2);
+        drawCentered("Hero", ry + 105, inkDark, rx + rw / 2);
         g2.setFont(fontSmall);
-        drawCentered("Lv. " + gp.progression.level, ry + 197, inkDark, rx + rw / 2);
-        drawStatBar("HP", gp.playerHP, gp.playerMaxHP, rx + 18, ry + 225, rw - 36, new Color(93, 145, 76));
-        drawStatBar("MP", gp.playerMP, gp.playerMaxMP, rx + 18, ry + 280, rw - 36, new Color(74, 133, 184));
+        drawCentered("Lv. " + gp.progression.level, ry + 132, inkDark, rx + rw / 2);
+        drawStatBar("HP", gp.playerHP, gp.playerMaxHP, rx + 18, ry + 175, rw - 36, new Color(93, 145, 76));
+        drawStatBar("MP", gp.playerMP, gp.playerMaxMP, rx + 18, ry + 230, rw - 36, new Color(74, 133, 184));
         g2.setFont(fontSmall);
-        drawCentered("EXP", ry + 350, inkDark, rx + rw / 2);
-        drawCentered(gp.progression.level >= PlayerProgression.MAX_LEVEL ? "MAX" : gp.progression.experience + " / " + gp.progression.experienceToNext, ry + 375, inkDark, rx + rw / 2);
+        drawCentered("EXP", ry + 300, inkDark, rx + rw / 2);
+        drawCentered(gp.progression.level >= PlayerProgression.MAX_LEVEL ? "MAX" : gp.progression.experience + " / " + gp.progression.experienceToNext, ry + 325, inkDark, rx + rw / 2);
 
         drawHint("W/S: Select     ENTER: Confirm     ESC / I: Return to game");
     }
@@ -362,15 +369,140 @@ public class UI {
 
     private String categoryDescription(int index) {
         switch (index) {
-            case 0: return "Review the lands you have explored and the roads still ahead.";
-            case 1: return "Keep track of your journey, discoveries, and important events.";
-            case 3: return "View restorative items and recovery supplies.";
-            case 4: return "Manage weapons, armor, and the gear you carry.";
-            case 5: return "Review available disciplines and combat roles.";
-            case 6: return "Inspect learned abilities and techniques.";
-            case 7: return "Review your character's attributes and progression.";
-            default: return "Other useful records and adventure options.";
+            case 0: return "View the items you have collected during your journey.";
+            case 1: return "Review the spells and magic available to your character.";
+            case 2: return "Manage your weapons, armor, and equipped gear.";
+            case 3: return "Review your character's attributes and progression.";
+            default: return "Adjust game options and access system functions.";
         }
+    }
+
+    private void drawCategoryDetails() {
+        String category = menuCategories[menuCategory];
+        // Display the actual spell list instead of the generic category screen.
+        if (menuCategory == 1) {
+            drawSpellDetails();
+            return;
+        }
+        drawRibbon(category.toUpperCase(), 24);
+        int panelW = 690, panelH = 560;
+        int panelX = (gp.screenWidth - panelW) / 2, panelY = 110;
+        drawOrnatePanel(panelX, panelY, panelW, panelH);
+        g2.setFont(fontMid);
+        drawCentered(category + " screen", panelY + 100, inkDark);
+        g2.setFont(fontSmall);
+        drawCentered("This menu destination is working.", panelY + 145, inkDark);
+        drawCentered("Its contents will be implemented in a later step.", panelY + 175, inkDark);
+        drawHint("ESC: Back to menu");
+    }
+
+
+    private void drawSpellDetails() {
+
+        drawRibbon("SPELLS", 24);
+
+        int panelW = 690;
+        int panelH = 560;
+        int panelX = (gp.screenWidth - panelW) / 2;
+        int panelY = 110;
+
+        drawOrnatePanel(panelX, panelY, panelW, panelH);
+
+        g2.setFont(fontSmall);
+        g2.setColor(inkDark);
+
+        drawCentered(
+                "Known spells and their quick-cast assignments",
+                panelY + 35,
+                inkDark
+        );
+
+        int rowY = panelY + 65;
+
+        int rowHeight = 125;
+        int rowX = panelX + 25;
+        int rowWidth = panelW - 50;
+
+        if (gp.spells.getSpells().isEmpty()) {
+
+            g2.setFont(fontMid);
+            drawCentered(
+                    "No spells learned yet.",
+                    panelY + 180,
+                    inkDark
+            );
+
+            drawHint("ESC: Back to menu");
+            return;
+        }
+
+        for (SpellList.Spell spell : gp.spells.getSpells()) {
+
+            drawRow(
+                    rowX,
+                    rowY,
+                    rowWidth,
+                    rowHeight - 10,
+                    false
+            );
+
+            // Spell name.
+            g2.setFont(fontMid);
+            g2.setColor(inkDark);
+
+            g2.drawString(
+                    spell.name,
+                    rowX + 18,
+                    rowY + 29
+            );
+
+            // Mana cost.
+            g2.setFont(fontSmall);
+
+            g2.drawString(
+                    "Cost: " + spell.manaCost + " MP",
+                    rowX + rowWidth - 150,
+                    rowY + 29
+            );
+
+            // Find the quick-cast key assigned to this spell.
+            String boundKey = "Not bound";
+
+            for (int slot = 0; slot < gp.spells.getBindCount(); slot++) {
+
+                SpellList.Spell boundSpell =
+                        gp.spells.getBoundSpell(slot);
+
+                if (boundSpell != null
+                        && boundSpell.id.equals(spell.id)) {
+
+                    boundKey = gp.spells.getBindName(slot);
+                    break;
+                }
+            }
+
+            // Description.
+            g2.setFont(fontSmall);
+
+            drawWrapped(
+                    spell.description,
+                    rowX + 18,
+                    rowY + 55,
+                    rowWidth - 36,
+                    17
+            );
+
+            // Quick-cast assignment.
+            g2.drawString(
+                    "Quick Cast: " + boundKey,
+                    rowX + 18,
+                    rowY + 96
+            );
+
+            rowY += rowHeight;
+        }
+
+        drawHint("ESC: Back to menu");
     }
 
     private void drawOrnatePanel(int x, int y, int w, int h) {

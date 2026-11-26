@@ -48,6 +48,8 @@ public class GamePanel extends JPanel implements Runnable {
     public int playerMP = 30;
     public int playerMaxMP = 30;
 
+    private int manaRegenTicks = 0;
+
     // ===== PROGRESSION =====
     public final PlayerProgression progression = new PlayerProgression();
 
@@ -59,6 +61,7 @@ public class GamePanel extends JPanel implements Runnable {
     // Compatibility alias for code that uses the singular field name.
     public final SoundEffect soundEffect = soundEffects;
     public Inventory inventory = new Inventory();
+    public final SpellManager spells = new SpellManager(this);
     public KeyHandler keyH = new KeyHandler();
     public player Player = new player(this, keyH);
     public EnemyManager enemyM = new EnemyManager(this);
@@ -135,6 +138,10 @@ public class GamePanel extends JPanel implements Runnable {
         // The world only updates while playing. In menus, everything is paused.
         if (gameState == playState) {
             Player.update();
+
+            // Update spell cooldowns.
+            spells.update();
+
             // Check map exits after movement, so the player can walk into the transition area.
             if (checkMapTransitions()) return;
             enemyM.update();
@@ -254,8 +261,9 @@ public class GamePanel extends JPanel implements Runnable {
         bindKey(input, actions, KeyEvent.VK_LEFT, "left", true);
         bindKey(input, actions, KeyEvent.VK_RIGHT, "right", true);
         bindKey(input, actions, KeyEvent.VK_Z, "attack", true);
-        bindKey(input, actions, KeyEvent.VK_X, "dash", true);
-        bindKey(input, actions, KeyEvent.VK_C, "bigSwing", true);
+        bindKey(input, actions, KeyEvent.VK_X, "spell1", true);
+        bindKey(input, actions, KeyEvent.VK_C, "spell2", true);
+        bindKey(input, actions, KeyEvent.VK_V, "spell3", true);
 
         bindMenuKey(input, actions, KeyEvent.VK_ENTER, "confirm");
         bindMenuKey(input, actions, KeyEvent.VK_ESCAPE, "back");
@@ -403,7 +411,8 @@ public class GamePanel extends JPanel implements Runnable {
         if (keyCode == KeyEvent.VK_I) {
             ui.invMessage = "";
             ui.inventoryDetails = false;
-            ui.menuCategory = 2;
+            ui.categoryDetails = false;
+            ui.menuCategory = 0;
             gameState = inventoryState;
         }
         // TEMPORARY: press B to open the battle screen so you can see it
@@ -412,13 +421,24 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void handleInventory(int keyCode, boolean up, boolean down, boolean left, boolean right,
                                  boolean confirm, boolean back) {
+        if (ui.categoryDetails) {
+            if (back || keyCode == KeyEvent.VK_I) {
+                ui.categoryDetails = false;
+            }
+            return;
+        }
+
         if (!ui.inventoryDetails) {
-            if (up) ui.menuCategory = (ui.menuCategory + 8) % 9;
-            if (down) ui.menuCategory = (ui.menuCategory + 1) % 9;
-            if (confirm && ui.menuCategory == 2) {
-                ui.inventoryDetails = true;
-                ui.invIndex = 0;
-                ui.invMessage = "";
+            if (up) ui.menuCategory = (ui.menuCategory + 4) % 5;
+            if (down) ui.menuCategory = (ui.menuCategory + 1) % 5;
+            if (confirm) {
+                if (ui.menuCategory == 0) {
+                    ui.inventoryDetails = true;
+                    ui.invIndex = 0;
+                    ui.invMessage = "";
+                } else {
+                    ui.categoryDetails = true;
+                }
             }
             if (back || keyCode == KeyEvent.VK_I) {
                 gameState = playState;

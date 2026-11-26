@@ -19,6 +19,12 @@ public class player extends entity {
     boolean moving = false;
     boolean attacking = false;
     boolean attackLatch = false;   // one attack per Z press
+
+    // ----- Spell input latches -----
+    boolean spell1Latch = false;
+    boolean spell2Latch = false;
+    boolean spell3Latch = false;
+
     int attackBufferTimer = 0;     // a Z press is remembered this many ticks (so Z just before X still swings in the dash)
     static final int ATTACK_BUFFER_TICKS = 8;
 
@@ -154,6 +160,12 @@ public class player extends entity {
     }
 
     public boolean isDashing() { return dashing; }
+    // Allows the spell system to activate the existing dash.
+    public void activateDashSpell() {
+        if (dashReady()) {
+            startDash();
+        }
+    }
     public boolean isMoving() { return moving; }
 
     // True when a dash could be started right now (enemies peek at this to read you)
@@ -222,6 +234,31 @@ public class player extends entity {
             updateKnockback(gp);
             updateCamera();
             return;
+        }
+
+        // ----- SPELL QUICK-CAST -----
+// X = Spell Slot 1
+        if (KeyH.spell1Pressed && !spell1Latch) {
+            spell1Latch = true;
+            gp.spells.castBound(0);
+        } else if (!KeyH.spell1Pressed) {
+            spell1Latch = false;
+        }
+
+// C = Spell Slot 2
+        if (KeyH.spell2Pressed && !spell2Latch) {
+            spell2Latch = true;
+            gp.spells.castBound(1);
+        } else if (!KeyH.spell2Pressed) {
+            spell2Latch = false;
+        }
+
+// V = Spell Slot 3
+        if (KeyH.spell3Pressed && !spell3Latch) {
+            spell3Latch = true;
+            gp.spells.castBound(2);
+        } else if (!KeyH.spell3Pressed) {
+            spell3Latch = false;
         }
 
         // Pressing X and C together starts the dash and big swing as one combo.

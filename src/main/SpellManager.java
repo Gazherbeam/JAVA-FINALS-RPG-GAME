@@ -139,39 +139,16 @@ public class SpellManager {
 
             case ARC_BOLT:
 
-                int px = gp.Player.centerX();
-                int py = gp.Player.centerY();
+                gp.enemyM.magicProjectiles.add(
+                        new entity.MagicProjectile(
+                                gp,
+                                gp.Player.centerX(),
+                                gp.Player.centerY(),
+                                gp.Player.direction,
+                                28
+                        )
+                );
 
-                Rectangle area;
-
-                switch (gp.Player.direction) {
-
-                    case "up":
-                        area = new Rectangle(
-                                px - 55, py - 150, 110, 150
-                        );
-                        break;
-
-                    case "down":
-                        area = new Rectangle(
-                                px - 55, py, 110, 150
-                        );
-                        break;
-
-                    case "left":
-                        area = new Rectangle(
-                                px - 150, py - 55, 150, 110
-                        );
-                        break;
-
-                    default:
-                        area = new Rectangle(
-                                px, py - 55, 150, 110
-                        );
-                        break;
-                }
-
-                gp.enemyM.hitEnemies(area, 28, px, py, 10);
                 return true;
 
             default:

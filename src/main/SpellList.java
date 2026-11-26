@@ -39,7 +39,7 @@ public final class SpellList {
                         "dash",
                         "Dash",
                         "Burst forward in the direction you are moving. Grants brief invulnerability.",
-                        5,
+                        0,
                         Effect.DASH
                 ),
                 new Spell(

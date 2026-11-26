@@ -247,6 +247,7 @@ public class GamePanel extends JPanel implements Runnable {
     private void clearAreaEnemies() {
         enemyM.enemies.clear();
         enemyM.projectiles.clear();
+        enemyM.magicProjectiles.clear();
     }
 
     // ===== KEYBOARD INPUT =====

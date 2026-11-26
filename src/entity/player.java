@@ -31,6 +31,7 @@ public class player extends entity {
     // ----- Attack settings -----
     int attackTicks = 0;                    // how long the current swing has lasted
     static final int ATTACK_HIT_TICK = 8;   // the swing damages at this tick (about when the blade is out)
+    public static final int MAIN_ATTACK_COOLDOWN = 24;
     public int attackDamage = 40;          // same as the C attack (BIG_SWING_DAMAGE)
     public double attackKnockback = 18;    // same as the C attack (BIG_SWING_KNOCKBACK)
     int attackCooldownTimer = 0;           // Z uses the same cooldown as C (BIG_SWING_COOLDOWN)
@@ -116,10 +117,10 @@ public class player extends entity {
             walkLeft  = makeAnim(sheet, 6, 2, 2, 150);
 
             // Attack: columns x4, x5, x6 -> start column 3, 5 frames
-            attackDown  = makeAttackAnim(sheet, 0, 3, 5, 120);
-            attackRight = makeAttackAnim(sheet, 2, 3, 5, 120);
-            attackUp    = makeAttackAnim(sheet, 4, 3, 5, 120);
-            attackLeft  = makeAttackAnim(sheet, 6, 3, 5, 120);
+            attackDown  = makeAttackAnim(sheet, 0, 3, 5, 80);
+            attackRight = makeAttackAnim(sheet, 2, 3, 5, 80);
+            attackUp    = makeAttackAnim(sheet, 4, 3, 5, 80);
+            attackLeft  = makeAttackAnim(sheet, 6, 3, 5, 80);
 
             currentAnim = idleDown;
         } catch (IOException e) {
@@ -440,7 +441,7 @@ public class player extends entity {
                 bigSwinging = false;
                 bigSwingCooldownTimer = BIG_SWING_COOLDOWN;
             } else {
-                attackCooldownTimer = BIG_SWING_COOLDOWN;
+                attackCooldownTimer = MAIN_ATTACK_COOLDOWN;
             }
         }
     }

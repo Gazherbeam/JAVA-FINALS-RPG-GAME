@@ -13,6 +13,7 @@ public class EnemyManager {
     GamePanel gp;
     public final List<enemy> enemies = new ArrayList<>();
     public final List<projectile> projectiles = new ArrayList<>();
+    public final List<MagicProjectile> magicProjectiles = new ArrayList<>();
 
     public EnemyManager(GamePanel gp) {
         this.gp = gp;
@@ -53,6 +54,8 @@ public class EnemyManager {
     public void update() {
         for (enemy e : enemies) e.update();
         for (projectile p : projectiles) p.update();
+        for (MagicProjectile p : magicProjectiles) p.update();
+        magicProjectiles.removeIf(p -> !p.alive);
         enemies.removeIf(enemy::isRemovable);
         projectiles.removeIf(p -> !p.alive);
     }
@@ -63,15 +66,34 @@ public class EnemyManager {
         sorted.sort((a, b) -> Integer.compare(a.y, b.y));
         for (enemy e : sorted) e.draw(g2);
         for (projectile p : projectiles) p.draw(g2);
+        for (MagicProjectile p : magicProjectiles) p.draw(g2);
     }
 
     // Damages every living enemy touching the area. Returns how many were hit.
+
     public int hitEnemies(Rectangle area, int damage, int fromX, int fromY, double knockback) {
         int hits = 0;
+
         for (enemy e : enemies) {
             if (e.state == enemy.State.DEAD) continue;
-            if (area.intersects(e.hitbox()) && e.takeDamage(damage, fromX, fromY, knockback)) hits++;
+
+            if (area.intersects(e.hitbox())
+                    && e.takeDamage(damage, fromX, fromY, knockback)) {
+                hits++;
+            }
         }
+
+        // Restore 2 MP for every enemy successfully hit.
+        if (hits > 0) {
+            int manaRestored = hits * 2;
+
+            gp.playerMP = Math.min(
+                    gp.playerMaxMP,
+                    gp.playerMP + manaRestored
+            );
+        }
+
         return hits;
     }
+
 }

@@ -13,7 +13,7 @@ public final class SpellList {
     private SpellList() { }
 
     public enum Effect {
-        DASH, HEAL, ARC_BOLT
+        DASH, HEAL, ARC_BOLT, HEAVY_SMASH
     }
 
     public static final class Spell {

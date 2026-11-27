@@ -40,6 +40,9 @@ public class UI {
     BufferedImage slotNormal, slotSelected;
     BufferedImage toggleOn, toggleOff;
     BufferedImage barFrame, barTrough, barFill, barFillRed;
+    BufferedImage barFillBlue;        // MP bar fill (made from the gold bar art in the constructor)
+    BufferedImage slotDisabled;       // quick-spell slot when it can't be cast right now
+    private final Map<String, BufferedImage> spellIconCache = new HashMap<>();
 
     // ----- Background -----
     BufferedImage bgImage;
@@ -71,6 +74,8 @@ public class UI {
         barTrough    = load("ui/wood/1x/bars/bar_trough.png");
         barFill      = load("ui/wood/1x/bars/bar_fill_gold.png");
         barFillRed   = load("ui/wood/1x/bars/bar_fill_red.png");
+        barFillBlue  = tintBlue(barFill);
+        slotDisabled = load("ui/wood/1x/misc/slot_disabled.png");
 
 
         bgImage = loadAbsolute(BG_PATH);
@@ -150,18 +155,10 @@ public class UI {
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
-        // HP bar, top left. Keep the existing HUD layout and add progression text below it.
-        drawBar(12, 12, gp.playerMaxHP > 0 ? gp.playerHP / (double) gp.playerMaxHP : 0, barFillRed);
-        // MP bar, top right.
-        drawStatBar(
-                "MP",
-                gp.playerMP,
-                gp.playerMaxMP,
-                gp.screenWidth - 190,
-                12,
-                170,
-                new Color(70, 190, 105)
-        );
+        // HP bar and MP bar side by side, top left.
+        int barW = barFrame.getWidth() * S;
+        drawHudBar(12, 12, "HP", gp.playerHP, gp.playerMaxHP, barFillRed);
+        drawHudBar(12 + barW + 10, 12, "MP", gp.playerMP, gp.playerMaxMP, barFillBlue);
 
         g2.setFont(fontSmall);
         g2.setColor(Color.WHITE);
@@ -181,6 +178,204 @@ public class UI {
         g2.setFont(fontSmall);
         g2.setColor(Color.WHITE);
         g2.drawString("I: Inventory", 10, gp.screenHeight - 12);
+
+        drawQuickSpellSlots();
+    }
+
+    // ===== HUD: HP / MP BARS =====
+
+    // One HUD bar (frame + coloured fill) with "HP 100/100" text drawn on top of it.
+    private void drawHudBar(int x, int y, String label, int value, int max, BufferedImage fillArt) {
+        double ratio = max > 0 ? Math.max(0, Math.min(1, value / (double) max)) : 0;
+        drawBar(x, y, ratio, fillArt);
+
+        String text = label + " " + value + "/" + max;
+        g2.setFont(fontSmall);
+        FontMetrics fm = g2.getFontMetrics();
+        int troughX = x + 10 * S, troughY = y + 5 * S;
+        int troughW = barTrough.getWidth() * S, troughH = barTrough.getHeight() * S;
+        int tx = troughX + (troughW - fm.stringWidth(text)) / 2;
+        int ty = troughY + (troughH + fm.getAscent()) / 2 - 2;
+        g2.setColor(new Color(0, 0, 0, 200));      // shadow so the text reads on any fill
+        g2.drawString(text, tx + 1, ty + 1);
+        g2.setColor(Color.WHITE);
+        g2.drawString(text, tx, ty);
+    }
+
+    // Makes a blue copy of a bar fill image (keeps its shading and transparency).
+    private BufferedImage tintBlue(BufferedImage src) {
+        if (src == null) return null;
+        BufferedImage out = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int py = 0; py < src.getHeight(); py++) {
+            for (int px = 0; px < src.getWidth(); px++) {
+                int argb = src.getRGB(px, py);
+                int a = (argb >>> 24) & 0xFF;
+                if (a == 0) continue;
+                int r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+                float lum = Math.min(1f, (0.299f * r + 0.587f * g + 0.114f * b) / 255f * 1.25f);
+                int nr = (int) (60 * lum), ng = (int) (140 * lum), nb = (int) (255 * lum);
+                out.setRGB(px, py, (a << 24) | (nr << 16) | (ng << 8) | nb);
+            }
+        }
+        return out;
+    }
+
+    // ===== HUD: QUICK-CAST SPELL SLOTS (X / C / V) =====
+
+    // Bottom-right of the screen: one slot per quick-cast key, showing the key,
+    // the icon of the spell bound to it, its name and its MP cost.
+    private void drawQuickSpellSlots() {
+        int count = gp.spells.getBindCount();
+        int size = 72, gap = 14;
+        int totalW = count * size + (count - 1) * gap;
+        int x0 = gp.screenWidth - totalW - 16;
+        int y0 = gp.screenHeight - size - 46;
+
+        for (int i = 0; i < count; i++) {
+            int x = x0 + i * (size + gap);
+            SpellList.Spell spell = gp.spells.getBoundSpell(i);
+            int cooldown = gp.spells.getCooldown(i);
+            boolean usable = spell != null && cooldown <= 0 && gp.playerMP >= spell.manaCost;
+
+            // Slot background (greyed out when the spell can't be cast right now).
+            nineSlice((usable || slotDisabled == null) ? slotNormal : slotDisabled,
+                    8, 8, 8, 8, x, y0, size, size);
+
+            if (spell != null) {
+                drawSpellIcon(spell, x + 12, y0 + 12, size - 24, usable);
+
+                // Cooldown sweep: a dark shade that shrinks from the top as the spell recharges.
+                if (cooldown > 0) {
+                    int maxCd = spell.effect == SpellList.Effect.DASH ? 40 : 18;
+                    int shade = (int) ((size - 24) * Math.min(1.0, cooldown / (double) maxCd));
+                    g2.setColor(new Color(0, 0, 0, 150));
+                    g2.fillRect(x + 12, y0 + 12, size - 24, shade);
+                }
+
+                // Spell name and MP cost under the slot.
+                g2.setFont(fontSmall);
+                String name = spell.name;
+                String cost = spell.manaCost > 0 ? spell.manaCost + " MP" : "FREE";
+                int cx = x + size / 2;
+                drawShadowed(name, cx, y0 + size + 16, Color.WHITE);
+                drawShadowed(cost, cx, y0 + size + 31,
+                        gp.playerMP >= spell.manaCost ? new Color(140, 200, 255) : new Color(255, 120, 110));
+            }
+
+            // Key badge in the top-left corner of the slot.
+            String key = gp.spells.getBindName(i);
+            g2.setFont(fontSmall);
+            int bw = 22, bh = 20;
+            g2.setColor(new Color(47, 27, 16, 235));
+            g2.fillRoundRect(x - 6, y0 - 8, bw, bh, 6, 6);
+            g2.setColor(new Color(244, 210, 112));
+            g2.setStroke(new BasicStroke(2));
+            g2.drawRoundRect(x - 6, y0 - 8, bw, bh, 6, 6);
+            g2.setColor(inkLight);
+            g2.drawString(key, x - 6 + (bw - g2.getFontMetrics().stringWidth(key)) / 2,
+                    y0 - 8 + (bh + g2.getFontMetrics().getAscent()) / 2 - 2);
+        }
+    }
+
+    // Centered text with a 1px dark shadow.
+    private void drawShadowed(String text, int centerX, int y, Color color) {
+        int tx = centerX - g2.getFontMetrics().stringWidth(text) / 2;
+        g2.setColor(new Color(0, 0, 0, 200));
+        g2.drawString(text, tx + 1, y + 1);
+        g2.setColor(color);
+        g2.drawString(text, tx, y);
+    }
+
+    // Optional art: drop a PNG named after the spell id into res/spells/ (e.g. res/spells/dash.png)
+    // and it is used automatically. Without a file, a built-in icon is drawn instead.
+    private BufferedImage getSpellIcon(String id) {
+        if (!spellIconCache.containsKey(id)) {
+            spellIconCache.put(id, loadResource("/spells/" + id + ".png"));
+        }
+        return spellIconCache.get(id);
+    }
+
+    private void drawSpellIcon(SpellList.Spell spell, int x, int y, int size, boolean usable) {
+        Composite oldComposite = g2.getComposite();
+        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        Stroke oldStroke = g2.getStroke();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        if (!usable) g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.45f));
+
+        BufferedImage art = getSpellIcon(spell.id);
+        if (art != null) {
+            g2.drawImage(art, x, y, size, size, null);
+        } else {
+            drawSpellGlyph(spell.effect, x, y, size);
+        }
+
+        g2.setComposite(oldComposite);
+        g2.setStroke(oldStroke);
+        if (oldAA != null) g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+    }
+
+    // Built-in icons, one per spell effect. Add a case here when you add a new Effect.
+    private void drawSpellGlyph(SpellList.Effect effect, int x, int y, int s) {
+        Color ring;
+        switch (effect) {
+            case DASH:     ring = new Color(110, 200, 255); break;
+            case HEAL:     ring = new Color(110, 220, 120); break;
+            case ARC_BOLT: ring = new Color(255, 215, 80);  break;
+            default:       ring = Color.WHITE;              break;
+        }
+
+        // Dark disc with a coloured rim.
+        g2.setColor(new Color(40, 28, 20));
+        g2.fillOval(x, y, s, s);
+        g2.setColor(ring);
+        g2.setStroke(new BasicStroke(Math.max(2f, s / 16f)));
+        g2.drawOval(x + 1, y + 1, s - 3, s - 3);
+
+        switch (effect) {
+            case DASH: {
+                // Two speed chevrons ">>"
+                g2.setStroke(new BasicStroke(s / 9f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                for (int k = 0; k < 2; k++) {
+                    int ox = (int) (s * (0.24 + k * 0.22));
+                    int[] px = {x + ox, x + ox + (int) (s * 0.20), x + ox};
+                    int[] py = {y + (int) (s * 0.30), y + (int) (s * 0.50), y + (int) (s * 0.70)};
+                    g2.setColor(k == 0 ? new Color(150, 215, 255) : Color.WHITE);
+                    g2.drawPolyline(px, py, 3);
+                }
+                break;
+            }
+            case HEAL: {
+                // Plus sign
+                g2.setColor(new Color(120, 235, 130));
+                g2.fillRect(x + (int) (s * 0.42), y + (int) (s * 0.22), (int) (s * 0.16), (int) (s * 0.56));
+                g2.fillRect(x + (int) (s * 0.22), y + (int) (s * 0.42), (int) (s * 0.56), (int) (s * 0.16));
+                g2.setColor(new Color(220, 255, 220));
+                g2.fillRect(x + (int) (s * 0.46), y + (int) (s * 0.26), (int) (s * 0.08), (int) (s * 0.48));
+                g2.fillRect(x + (int) (s * 0.26), y + (int) (s * 0.46), (int) (s * 0.48), (int) (s * 0.08));
+                break;
+            }
+            case ARC_BOLT: {
+                // Lightning bolt
+                double[][] pts = {{0.60, 0.12}, {0.28, 0.54}, {0.47, 0.54}, {0.38, 0.88},
+                        {0.74, 0.42}, {0.54, 0.42}, {0.68, 0.12}};
+                int[] px = new int[pts.length], py = new int[pts.length];
+                for (int i = 0; i < pts.length; i++) {
+                    px[i] = x + (int) (s * pts[i][0]);
+                    py[i] = y + (int) (s * pts[i][1]);
+                }
+                g2.setColor(new Color(255, 230, 100));
+                g2.fillPolygon(px, py, pts.length);
+                g2.setColor(new Color(255, 250, 200));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawPolygon(px, py, pts.length);
+                break;
+            }
+            default: {
+                // Unknown effect: a simple star-ish dot so new spells still show something.
+                g2.setColor(ring);
+                g2.fillOval(x + s / 3, y + s / 3, s / 3, s / 3);
+            }
+        }
     }
 
     // ===== SCREENS =====

@@ -1,4 +1,3 @@
-
 package main;
 
 import java.awt.Rectangle;
@@ -69,6 +68,15 @@ public class SpellManager {
 
     public int getBindCount() {
         return quickBinds.length;
+    }
+
+    // Ticks left before the spell in this quick-cast slot can be used again (HUD uses this).
+    public int getCooldown(int slot) {
+        if (slot < 0 || slot >= cooldowns.length) {
+            return 0;
+        }
+
+        return cooldowns[slot];
     }
 
     public void assign(int spellIndex, int slot) {

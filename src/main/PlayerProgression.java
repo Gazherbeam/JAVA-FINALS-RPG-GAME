@@ -77,11 +77,16 @@ public class PlayerProgression {
     }
 
     public void applyTo(GamePanel gp) {
-        gp.playerMaxHP = maxHP;
-        gp.playerMaxMP = maxMP;
-        gp.Player.speed = movementSpeed;
-        gp.Player.attackDamage = attack;
-        gp.Player.defense = defense;
+        // Equipped gear adds on top of the level-based stats.
+        gp.playerMaxHP = maxHP + (int) Math.round(gearBonus(gp, EquipmentList.Stat.MAX_HP));
+        gp.playerMaxMP = maxMP + (int) Math.round(gearBonus(gp, EquipmentList.Stat.MAX_MP));
+        gp.Player.speed = Math.max(1.0, movementSpeed + gearBonus(gp, EquipmentList.Stat.SPEED));
+        gp.Player.attackDamage = attack + (int) Math.round(gearBonus(gp, EquipmentList.Stat.ATTACK));
+        gp.Player.defense = defense + (int) Math.round(gearBonus(gp, EquipmentList.Stat.DEFENSE));
+    }
+
+    private double gearBonus(GamePanel gp, EquipmentList.Stat stat) {
+        return gp.equipment == null ? 0 : gp.equipment.getBonus(stat);
     }
 
     public double experienceRatio() {

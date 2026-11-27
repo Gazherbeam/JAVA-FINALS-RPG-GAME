@@ -53,6 +53,10 @@ public class GamePanel extends JPanel implements Runnable {
     // ===== PROGRESSION =====
     public final PlayerProgression progression = new PlayerProgression();
 
+    // ===== MUSIC TRACKS (the files live in res/Soundtrack/) =====
+    private static final String MENU_MUSIC = "MainMenu.wav";
+    private static final String DEFAULT_MUSIC = "Battle01.wav";   // temporary default theme
+
     // ===== SYSTEM =====
     public TileManager tileM = new TileManager(this);
     public UI ui = new UI(this);
@@ -62,6 +66,8 @@ public class GamePanel extends JPanel implements Runnable {
     public final SoundEffect soundEffect = soundEffects;
     public Inventory inventory = new Inventory();
     public final SpellManager spells = new SpellManager(this);
+    public final EquipmentManager equipment = new EquipmentManager(this);
+    public final EquipmentMenu equipmentMenu = new EquipmentMenu(this);
     public KeyHandler keyH = new KeyHandler();
     public player Player = new player(this, keyH);
     public EnemyManager enemyM = new EnemyManager(this);
@@ -74,8 +80,8 @@ public class GamePanel extends JPanel implements Runnable {
         music.setVolume(ui.volume / 10.0f);
         soundEffects.setEnabled(ui.sfxEnabled);
         soundEffects.setVolume(ui.volume / 10.0f);
-        // Keep the existing area soundtrack playing.
-        music.play("Battle01.wav");
+        // The game opens on the title screen, so it starts with the main menu music.
+        music.play(MENU_MUSIC);
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setBackground(Color.black);
         this.setDoubleBuffered(true);
@@ -338,7 +344,7 @@ public class GamePanel extends JPanel implements Runnable {
 
         if (confirm) {
             switch (ui.menuIndex) {
-                case 0: gameState = playState; break;
+                case 0: gameState = playState; music.play(DEFAULT_MUSIC); break;
                 case 1: gameState = settingsState; ui.menuIndex = 0; break;
                 case 2: gameState = creditsState; break;
                 case 3: System.exit(0); break;
@@ -403,6 +409,7 @@ public class GamePanel extends JPanel implements Runnable {
         if (back) {
             gameState = titleState;
             ui.menuIndex = 0;
+            music.play(MENU_MUSIC);
         }
         // TEMPORARY: H = lose 10 HP, G = gain 10 HP, so you can watch the bar move
         if (keyCode == KeyEvent.VK_H) playerHP = Math.max(0, playerHP - 10);
@@ -423,6 +430,13 @@ public class GamePanel extends JPanel implements Runnable {
     private void handleInventory(int keyCode, boolean up, boolean down, boolean left, boolean right,
                                  boolean confirm, boolean back) {
         if (ui.categoryDetails) {
+            // The Equipment screen handles its own keys; it tells us when to close.
+            if (ui.menuCategory == 2) {
+                if (equipmentMenu.handleInput(up, down, confirm, back || keyCode == KeyEvent.VK_I)) {
+                    ui.categoryDetails = false;
+                }
+                return;
+            }
             if (back || keyCode == KeyEvent.VK_I) {
                 ui.categoryDetails = false;
             }

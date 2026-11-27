@@ -579,6 +579,11 @@ public class UI {
             drawSpellDetails();
             return;
         }
+        // Display the equipment screen (slots, owned gear and stat previews).
+        if (menuCategory == 2) {
+            gp.equipmentMenu.draw(this);
+            return;
+        }
         drawRibbon(category.toUpperCase(), 24);
         int panelW = 690, panelH = 560;
         int panelX = (gp.screenWidth - panelW) / 2, panelY = 110;
@@ -700,7 +705,7 @@ public class UI {
         drawHint("ESC: Back to menu");
     }
 
-    private void drawOrnatePanel(int x, int y, int w, int h) {
+    void drawOrnatePanel(int x, int y, int w, int h) {
         g2.setColor(new Color(235, 211, 164, 218));
         g2.fillRoundRect(x, y, w, h, 18, 18);
         g2.setColor(new Color(92, 61, 34, 230));
@@ -752,7 +757,7 @@ public class UI {
     // ===== PIECES =====
 
     // Red ribbon with a title. The forked ends stay whole, the middle stretches.
-    private void drawRibbon(String text, int y) {
+    void drawRibbon(String text, int y) {
         int w = ribbon.getWidth() * S;
         int h = ribbon.getHeight() * S;
         int x = (gp.screenWidth - w) / 2;
@@ -770,7 +775,7 @@ public class UI {
         drawCentered(text, ty, inkLight, x + w / 2);
     }
 
-    private void drawRow(int x, int y, int w, int h, boolean selected) {
+    void drawRow(int x, int y, int w, int h, boolean selected) {
         nineSlice(selected ? slotSelected : slotNormal, 8, 8, 8, 8, x, y, w, h);
     }
 
@@ -799,7 +804,7 @@ public class UI {
         }
     }
 
-    private void drawHint(String text) {
+    void drawHint(String text) {
         g2.setFont(fontSmall);
         drawCentered(text, gp.screenHeight - 30, hintColor);
     }
@@ -807,21 +812,21 @@ public class UI {
     // ===== HELPERS =====
 
     // Centered on the whole screen.
-    private void drawCentered(String text, int y, Color color) {
+    void drawCentered(String text, int y, Color color) {
         int x = (gp.screenWidth - g2.getFontMetrics().stringWidth(text)) / 2;
         g2.setColor(color);
         g2.drawString(text, x, y);
     }
 
     // Centered at a specific x position.
-    private void drawCentered(String text, int y, Color color, int centerX) {
+    void drawCentered(String text, int y, Color color, int centerX) {
         int x = centerX - g2.getFontMetrics().stringWidth(text) / 2;
         g2.setColor(color);
         g2.drawString(text, x, y);
     }
 
     // Word-wraps text inside maxWidth using the current font.
-    private void drawWrapped(String text, int x, int y, int maxWidth, int lineHeight) {
+    void drawWrapped(String text, int x, int y, int maxWidth, int lineHeight) {
         FontMetrics fm = g2.getFontMetrics();
         String line = "";
         for (String word : text.split(" ")) {

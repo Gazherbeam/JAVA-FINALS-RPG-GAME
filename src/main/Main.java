@@ -1,6 +1,8 @@
 package main;
 
 import javax.swing.JFrame;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
@@ -18,10 +20,19 @@ public class Main {
         GamePanel gamepanel = new GamePanel();
         window.add(gamepanel);
 
+        // Keep keyboard input directed to the game panel when the window gains focus.
+        window.addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowGainedFocus(WindowEvent e) {
+                gamepanel.requestFocusInWindow();
+            }
+        });
+
         window.pack();
 
         window.setLocationRelativeTo(null);
         window.setVisible(true);
+        gamepanel.requestFocusInWindow();
 
         gamepanel.startGameThread();
 

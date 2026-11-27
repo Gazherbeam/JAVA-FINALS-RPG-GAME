@@ -179,6 +179,7 @@ public class UI {
                 : "EXP " + gp.progression.experience + "/" + gp.progression.experienceToNext;
         drawShadowedLeft("LV " + gp.progression.level + "   " + exp, 12, 62, Color.WHITE);
         if (showFPS) drawShadowedLeft("FPS: " + gp.currentFPS, 12, 85, Color.WHITE);
+        drawShadowedLeft(gp.quest.getText(), 12, 108, Color.WHITE);
         drawShadowedLeft("I: Inventory", 10, gp.screenHeight - 12, Color.WHITE);
 
         drawQuickSpellSlots();

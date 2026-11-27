@@ -36,6 +36,7 @@ public class GamePanel extends JPanel implements Runnable {
     public final int playState = 3;
     public final int battleState = 4;
     public final int inventoryState = 5;
+
     public int gameState = titleState;       // the game starts on the main menu
 
     // ===== FPS =====
@@ -65,6 +66,7 @@ public class GamePanel extends JPanel implements Runnable {
     // Compatibility alias for code that uses the singular field name.
     public final SoundEffect soundEffect = soundEffects;
     public Inventory inventory = new Inventory();
+    public final Quest quest = new Quest(this);
     public final SpellManager spells = new SpellManager(this);
     public final EquipmentManager equipment = new EquipmentManager(this);
     public final EquipmentMenu equipmentMenu = new EquipmentMenu(this);
@@ -96,6 +98,8 @@ public class GamePanel extends JPanel implements Runnable {
         inventory.add(new Item("Rusty Key", "Opens an old door somewhere.", false, null,
                 Item.Category.QUEST, 1, 0), 1);
         progression.applyTo(this);
+
+
     }
 
     public void startGameThread() {

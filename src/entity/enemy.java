@@ -257,6 +257,8 @@ public class enemy extends entity {
             state = State.DEAD;
             deathTimer = 40;
             gp.progression.awardExperience(xpReward, gp);   // runs once: DEAD returns early above
+            gp.progression.awardExperience(xpReward, gp);
+            gp.quest.onEnemyKilled();
             return;
         }
 

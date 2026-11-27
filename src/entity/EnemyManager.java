@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 // Owns every enemy and enemy projectile: updates them, draws them, and handles hits on them.
 public class EnemyManager {
@@ -14,6 +15,13 @@ public class EnemyManager {
     public final List<enemy> enemies = new ArrayList<>();
     public final List<projectile> projectiles = new ArrayList<>();
     public final List<MagicProjectile> magicProjectiles = new ArrayList<>();
+    private static final int MAX_SPAWNED = 4;
+    private static final int SPAWN_INTERVAL = 120;
+ // ticks between spawn attempts (2 s)
+    private static final int MIN_PLAYER_DIST = 6;    // tiles
+    private static final String[] SPAWN_TYPES = {"melee", "fast", "tank", "elite", "ranged", "shooter"};
+    private final Random rng = new Random();
+    private int spawnTimer = SPAWN_INTERVAL;
 
     public EnemyManager(GamePanel gp) {
         this.gp = gp;
@@ -25,7 +33,6 @@ public class EnemyManager {
     public void spawnDefaults() {
         enemies.clear();
         projectiles.clear();
-        spawn("dummy", 14, 10);
 
 
         System.out.println("Enemies spawned: " + enemies.size());
@@ -33,7 +40,6 @@ public class EnemyManager {
 
     public void respawnAll() { spawnDefaults(); }
 
-    // Places an enemy on a tile, or on the nearest free tile if that one is a wall.
     public void spawn(String type, int col, int row) {
         enemy e = new enemy(gp, type);
         for (int radius = 0; radius <= 3; radius++) {
@@ -50,8 +56,34 @@ public class EnemyManager {
         }
         System.out.println("EnemyManager: no free tile near (" + col + ", " + row + ") for " + type);
     }
+    // Spawns one random monster on a random free tile, keeping at most MAX_SPAWNED alive.
+    private void spawnRandom() {
 
+        if (++spawnTimer < SPAWN_INTERVAL) return;
+        spawnTimer = 0;
+
+        int alive = 0;
+        for (enemy e : enemies) {
+            if (e.state != enemy.State.DEAD && !e.type.equals("dummy")) alive++;
+        }
+        if (alive >= MAX_SPAWNED) return;
+
+        int ts = gp.tileSize;
+        for (int tries = 0; tries < 20; tries++) {
+            int col = 1 + rng.nextInt(gp.tileM.worldCols - 2);
+            int row = 1 + rng.nextInt(gp.tileM.worldRows - 2);
+            if (gp.tileM.isSolidTile(col, row)) continue;
+
+            int dx = col * ts + ts / 2 - gp.Player.centerX();
+            int dy = row * ts + ts / 2 - gp.Player.centerY();
+            if (dx * dx + dy * dy < (MIN_PLAYER_DIST * ts) * (MIN_PLAYER_DIST * ts)) continue;
+
+            spawn(SPAWN_TYPES[rng.nextInt(SPAWN_TYPES.length)], col, row);
+            return;
+        }
+    }
     public void update() {
+        spawnRandom();
         for (enemy e : enemies) e.update();
         for (projectile p : projectiles) p.update();
         for (MagicProjectile p : magicProjectiles) p.update();

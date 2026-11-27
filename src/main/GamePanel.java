@@ -161,6 +161,9 @@ public class GamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+
         // the map is drawn under the inventory so the menu appears over the game
         if (gameState == playState || gameState == inventoryState) {
             tileM.draw(g2);
@@ -196,15 +199,17 @@ public class GamePanel extends JPanel implements Runnable {
         g2.setColor(new Color(210, 175, 105));
         g2.drawRect(screenX + 3, screenY + 3, 42, 31);
         g2.setColor(Color.WHITE);
-        g2.setFont(new Font("Arial", Font.BOLD, 10));
-        g2.drawString("READ", screenX + 10, screenY + 22);
+        g2.setFont(ui.fontTiny);
+        int readW = g2.getFontMetrics().stringWidth("READ");
+        g2.drawString("READ", screenX + (tileSize - readW) / 2, screenY + 23);
 
         int dx = Player.centerX() - (worldX + tileSize / 2);
         int dy = Player.centerY() - (worldY + tileSize / 2);
         if (dx * dx + dy * dy <= (tileSize * 2) * (tileSize * 2)) {
-            g2.setFont(new Font("Arial", Font.BOLD, 12));
-            g2.setColor(Color.WHITE);
-            g2.drawString("E: Read sign", screenX - 7, screenY - 7);
+            g2.setFont(ui.fontSmall);
+            String prompt = "E: Read sign";
+            int promptW = g2.getFontMetrics().stringWidth(prompt);
+            g2.drawString(prompt, screenX + (tileSize - promptW) / 2, screenY - 7);
         }
     }
 

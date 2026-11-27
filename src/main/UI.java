@@ -51,7 +51,7 @@ public class UI {
     static final int PAN_SPEED = 30;   // pixels per second
     static final int DIM_ALPHA = 110;   // 0 = no darkening, 255 = black. Lower is lighter.
     // ----- Fonts -----
-    Font fontBig, fontMid, fontSmall;
+    Font fontBig, fontMid, fontSmall, fontTiny, fontHud, fontAbility, fontTextBox, fontSpeaker, fontDialogue;
 
     // ----- Colors -----
     final Color background = new Color(47, 27, 16);     // dark brown
@@ -81,7 +81,7 @@ public class UI {
         bgImage = loadAbsolute(BG_PATH);
         menuBackground = loadResource("/menu_background.png");
 
-        loadFont("fonts/PressStart2P-Regular.ttf");
+        loadFonts();
     }
 
     // ===== LOADING =====
@@ -112,18 +112,31 @@ public class UI {
         return iconCache.get(file);
     }
 
-    private void loadFont(String file) {
-        try (InputStream in = getClass().getResourceAsStream(BASE + file)) {
-            Font base = Font.createFont(Font.TRUETYPE_FONT, in);
-            fontBig   = base.deriveFont(Font.PLAIN, 24f);
-            fontMid   = base.deriveFont(Font.PLAIN, 18f);
-            fontSmall = base.deriveFont(Font.PLAIN, 10f);
+    private void loadFonts() {
+        Font uiFont = loadFont("/Fonts/UI and Graphic font/Alkhemikal.ttf", Font.BOLD);
+        Font textBoxFont = loadFont("/Fonts/Text box font/Perfect DOS VGA 437.ttf", Font.PLAIN);
+        fontTextBox = textBoxFont;
+
+        // Keep menu headings on the graphic face and use the text-box face for
+        // dialogue and compact HUD labels that need clear, regular letterforms.
+        fontBig      = uiFont.deriveFont(24f);
+        fontMid      = uiFont.deriveFont(16f);
+        fontSmall    = uiFont.deriveFont(10f);
+        fontTiny     = uiFont.deriveFont(8f);
+        fontHud      = textBoxFont.deriveFont(11f);
+        fontAbility  = textBoxFont.deriveFont(10f);
+        fontSpeaker  = textBoxFont.deriveFont(18f);
+        fontDialogue = textBoxFont.deriveFont(18f);
+    }
+
+    private Font loadFont(String path, int style) {
+        try (InputStream in = getClass().getResourceAsStream(path)) {
+            if (in != null) return Font.createFont(Font.TRUETYPE_FONT, in).deriveFont(style, 12f);
+            System.err.println("UI: font not found: " + path);
         } catch (Exception e) {
-            System.out.println("UI: could not load font " + BASE + file + ", using Arial");
-            fontBig   = new Font("Arial", Font.BOLD, 28);
-            fontMid   = new Font("Arial", Font.BOLD, 22);
-            fontSmall = new Font("Arial", Font.PLAIN, 14);
+            System.err.println("UI: could not load font " + path + ": " + e.getMessage());
         }
+        return new Font("Arial", style, 12);
     }
 
 
@@ -160,24 +173,13 @@ public class UI {
         drawHudBar(12, 12, "HP", gp.playerHP, gp.playerMaxHP, barFillRed);
         drawHudBar(12 + barW + 10, 12, "MP", gp.playerMP, gp.playerMaxMP, barFillBlue);
 
-        g2.setFont(fontSmall);
-        g2.setColor(Color.WHITE);
-        if (gp.progression.level >= PlayerProgression.MAX_LEVEL) {
-            g2.drawString("LV " + gp.progression.level + "   EXP MAX", 12, 62);
-        } else {
-            g2.drawString("LV " + gp.progression.level + "   EXP "
-                    + gp.progression.experience + "/" + gp.progression.experienceToNext, 12, 62);
-        }
-
-        if (showFPS) {
-            g2.setFont(fontSmall);
-            g2.setColor(Color.WHITE);
-            g2.drawString("FPS: " + gp.currentFPS, 12, 85);
-        }
-
-        g2.setFont(fontSmall);
-        g2.setColor(Color.WHITE);
-        g2.drawString("I: Inventory", 10, gp.screenHeight - 12);
+        g2.setFont(fontHud);
+        String exp = gp.progression.level >= PlayerProgression.MAX_LEVEL
+                ? "EXP MAX"
+                : "EXP " + gp.progression.experience + "/" + gp.progression.experienceToNext;
+        drawShadowedLeft("LV " + gp.progression.level + "   " + exp, 12, 62, Color.WHITE);
+        if (showFPS) drawShadowedLeft("FPS: " + gp.currentFPS, 12, 85, Color.WHITE);
+        drawShadowedLeft("I: Inventory", 10, gp.screenHeight - 12, Color.WHITE);
 
         drawQuickSpellSlots();
     }
@@ -190,16 +192,17 @@ public class UI {
         drawBar(x, y, ratio, fillArt);
 
         String text = label + " " + value + "/" + max;
-        g2.setFont(fontSmall);
-        FontMetrics fm = g2.getFontMetrics();
         int troughX = x + 10 * S, troughY = y + 5 * S;
         int troughW = barTrough.getWidth() * S, troughH = barTrough.getHeight() * S;
+
+        g2.setFont(fontHud);
+        if (g2.getFontMetrics().stringWidth(text) > troughW) {
+            g2.setFont(fontTextBox.deriveFont(9f));
+        }
+        FontMetrics fm = g2.getFontMetrics();
         int tx = troughX + (troughW - fm.stringWidth(text)) / 2;
-        int ty = troughY + (troughH + fm.getAscent()) / 2 - 2;
-        g2.setColor(new Color(0, 0, 0, 200));      // shadow so the text reads on any fill
-        g2.drawString(text, tx + 1, ty + 1);
-        g2.setColor(Color.WHITE);
-        g2.drawString(text, tx, ty);
+        int ty = troughY + (troughH + fm.getAscent() - fm.getDescent()) / 2;
+        drawShadowedLeft(text, tx, ty, Color.WHITE);
     }
 
     // Makes a blue copy of a bar fill image (keeps its shading and transparency).
@@ -253,7 +256,7 @@ public class UI {
                 }
 
                 // Spell name and MP cost under the slot.
-                g2.setFont(fontSmall);
+                g2.setFont(fontAbility);
                 String name = spell.name;
                 String cost = spell.manaCost > 0 ? spell.manaCost + " MP" : "FREE";
                 int cx = x + size / 2;
@@ -264,7 +267,7 @@ public class UI {
 
             // Key badge in the top-left corner of the slot.
             String key = gp.spells.getBindName(i);
-            g2.setFont(fontSmall);
+            g2.setFont(fontAbility);
             int bw = 22, bh = 20;
             g2.setColor(new Color(47, 27, 16, 235));
             g2.fillRoundRect(x - 6, y0 - 8, bw, bh, 6, 6);
@@ -279,11 +282,14 @@ public class UI {
 
     // Centered text with a 1px dark shadow.
     private void drawShadowed(String text, int centerX, int y, Color color) {
-        int tx = centerX - g2.getFontMetrics().stringWidth(text) / 2;
+        drawShadowedLeft(text, centerX - g2.getFontMetrics().stringWidth(text) / 2, y, color);
+    }
+
+    private void drawShadowedLeft(String text, int x, int y, Color color) {
         g2.setColor(new Color(0, 0, 0, 200));
-        g2.drawString(text, tx + 1, y + 1);
+        g2.drawString(text, x + 1, y + 1);
         g2.setColor(color);
-        g2.drawString(text, tx, y);
+        g2.drawString(text, x, y);
     }
 
     // Optional art: drop a PNG named after the spell id into res/spells/ (e.g. res/spells/dash.png)
